@@ -1,26 +1,26 @@
+<!-- src/App.vue -->
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <!-- Render các view và layout thông qua router -->
+  <router-view />
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
-
-export default {
-  name: 'App',
-  components: {
-    HelloWorld
-  }
-}
+<script setup>
+// Không cần logic ở đây vì router sẽ xử lý layout và view
+// Các global state hoặc logic (nếu có) nên được quản lý trong store hoặc composables
 </script>
 
+<style scoped>
+/* Style scoped để tránh ảnh hưởng global không mong muốn */
+/* Nếu cần style global, nên đặt trong src/style/main.css và import vào main.js */
+:deep(html, body) {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f8f8;
+}
+
+</style>
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+body {
+  margin: 0;
 }
 </style>
