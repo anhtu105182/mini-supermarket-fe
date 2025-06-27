@@ -13,14 +13,14 @@
 </template>
 
 <script>
-import AppHeader from '@/components/AppHeader.vue';
-import AppSidebar from '@/components/AppSidebar.vue';
+import AppSidebar from "@/components/AppSidebar.vue";
+import AppHeader from "@/components/AppHeader.vue";
 
 export default {
-  name: 'AppLayout',
+  name: "AppLayout",
   components: {
-    AppHeader,
     AppSidebar,
+    AppHeader,
   },
 };
 </script>

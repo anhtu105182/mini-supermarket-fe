@@ -54,6 +54,7 @@ const handleLogin = async () => {
   error.value = "";
   try {
     await login(username.value, password.value);
+    alert("Đăng nhập thành công!");
     router.push({ name: "DashboardOverview" });
   } catch (err) {
     error.value = err.message || "Đăng nhập thất bại. Vui lòng thử lại.";

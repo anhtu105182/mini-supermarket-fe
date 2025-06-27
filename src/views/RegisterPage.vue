@@ -79,7 +79,8 @@ const handleRegister = async () => {
   error.value = "";
   try {
     await register(username.value, email.value, password.value);
-    router.push({ name: "DashboardOverview" }); // Chuyển hướng đến trang chủ sau khi đăng ký
+    alert("Đăng ký thành công! Vui lòng đăng nhập.");
+    router.push({ name: "Login" }); // Chuyển hướng đến trang chủ sau khi đăng ký
   } catch (err) {
     error.value = err.message || "Đăng ký thất bại. Vui lòng thử lại.";
   } finally {
