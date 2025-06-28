@@ -1,115 +1,115 @@
-<!-- src/components/Sidebar.vue -->
 <template>
-  <nav class="sidebar">
-    <div class="sidebar-logo">MiniMarkit</div>
-    <ul class="sidebar-menu">
-      <li>
-        <router-link to="/dashboard"
-          ><span class="icon">🏠</span> Tổng quan</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/orders"
-          ><span class="icon">🧾</span> Đơn hàng</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/orders/list"
-          ><span class="icon">📋</span> Danh sách đơn hàng</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/orders/draft"
-          ><span class="icon">📝</span> Đơn hàng nháp</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/orders/return"
-          ><span class="icon">↩️</span> Trả hàng</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/orders/incomplete"
-          ><span class="icon">⏳</span> Đơn chưa hoàn tất</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/shipping"
-          ><span class="icon">🚚</span> Vận chuyển</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/products"
-          ><span class="icon">📦</span> Sản phẩm</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/inventory"
-          ><span class="icon">🏠</span> Quản lý kho</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/inventory/stock"
-          ><span class="icon">📊</span> Tồn kho</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/inventory/order"
-          ><span class="icon">🛒</span> Đặt hàng nhập</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/inventory/receive"
-          ><span class="icon">📥</span> Nhập hàng</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/inventory/return"
-          ><span class="icon">↩️</span> Trả hàng nhập</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/inventory/transfer"
-          ><span class="icon">🔄</span> Chuyển kho</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/suppliers"
-          ><span class="icon">🏭</span> Nhà cung cấp</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/customers"
-          ><span class="icon">👤</span> Khách hàng</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/promotion"
-          ><span class="icon">🎁</span> Khuyến mại</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/fund"
-          ><span class="icon">💰</span> Sổ quỹ</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/report"
-          ><span class="icon">📈</span> Báo cáo</router-link
-        >
-      </li>
-      <li>
-        <router-link to="/settings"
-          ><span class="icon">⚙️</span> Cấu hình</router-link
-        >
-      </li>
-    </ul>
-  </nav>
+  <div>
+    <nav
+      class="sidebar"
+      :class="{
+        collapsed: isCollapsed && !isMobile,
+        mobile: isMobile,
+        open: isMobile ? mobileOpen : !isCollapsed,
+      }"
+      v-show="!isMobile || mobileOpen"
+    >
+      <div class="sidebar-logo">
+        <!-- Luôn hiện nút bars khi collapsed (không phải mobile) -->
+        <button class="sidebar-toggle" @click="toggleSidebar">
+          <span v-if="isMobile ? !mobileOpen : isCollapsed">
+            <i class="fa-solid fa-bars"></i>
+          </span>
+          <span v-else>✕</span>
+        </button>
+        <span v-if="!isCollapsed && !isMobile">MiniMarkit</span>
+      </div>
+      <ul class="sidebar-menu">
+        <li v-for="item in menuItems" :key="item.to">
+          <router-link :to="item.to" @click="closeMobileSidebar">
+            <span class="icon">{{ item.icon }}</span>
+            <span v-if="!isCollapsed && !isMobile">{{ item.label }}</span>
+          </router-link>
+        </li>
+      </ul>
+    </nav>
+    <div
+      v-if="isMobile && mobileOpen"
+      class="sidebar-overlay"
+      @click="closeMobileSidebar"
+    ></div>
+  </div>
 </template>
 
 <script>
+import { ref, onMounted, onBeforeUnmount } from "vue";
 export default {
   name: "AppSidebar",
+  setup() {
+    const isCollapsed = ref(false);
+    const isMobile = ref(false);
+    const mobileOpen = ref(false);
+
+    const menuItems = [
+      { to: "/dashboard", icon: "🏠", label: "Tổng quan" },
+      { to: "/orders", icon: "🧾", label: "Đơn hàng" },
+      { to: "/orders/list", icon: "📋", label: "Danh sách đơn hàng" },
+      { to: "/orders/draft", icon: "📝", label: "Đơn hàng nháp" },
+      { to: "/orders/return", icon: "↩️", label: "Trả hàng" },
+      { to: "/orders/incomplete", icon: "⏳", label: "Đơn chưa hoàn tất" },
+      { to: "/shipping", icon: "🚚", label: "Vận chuyển" },
+      { to: "/products", icon: "📦", label: "Sản phẩm" },
+      { to: "/inventory", icon: "🏠", label: "Quản lý kho" },
+      { to: "/inventory/stock", icon: "📊", label: "Tồn kho" },
+      { to: "/inventory/order", icon: "🛒", label: "Đặt hàng nhập" },
+      { to: "/inventory/receive", icon: "📥", label: "Nhập hàng" },
+      { to: "/inventory/return", icon: "↩️", label: "Trả hàng nhập" },
+      { to: "/suppliers", icon: "🏭", label: "Nhà cung cấp" },
+      { to: "/customers", icon: "👤", label: "Khách hàng" },
+      { to: "/promotion", icon: "🎁", label: "Khuyến mại" },
+      { to: "/fund", icon: "💰", label: "Sổ quỹ" },
+      { to: "/report", icon: "📈", label: "Báo cáo" },
+      { to: "/settings", icon: "⚙️", label: "Cấu hình" },
+    ];
+
+    const handleResize = () => {
+      if (window.innerWidth <= 900) {
+        isMobile.value = true;
+        isCollapsed.value = false;
+      } else if (window.innerWidth <= 1200) {
+        isMobile.value = false;
+        isCollapsed.value = true;
+      } else {
+        isMobile.value = false;
+        isCollapsed.value = false;
+      }
+      if (!isMobile.value) mobileOpen.value = false;
+    };
+
+    const toggleSidebar = () => {
+      if (isMobile.value) {
+        mobileOpen.value = !mobileOpen.value;
+      } else {
+        isCollapsed.value = !isCollapsed.value;
+      }
+    };
+
+    const closeMobileSidebar = () => {
+      if (isMobile.value) mobileOpen.value = false;
+    };
+
+    onMounted(() => {
+      handleResize();
+      window.addEventListener("resize", handleResize);
+    });
+    onBeforeUnmount(() => {
+      window.removeEventListener("resize", handleResize);
+    });
+
+    return {
+      isCollapsed,
+      isMobile,
+      mobileOpen,
+      menuItems,
+      toggleSidebar,
+      closeMobileSidebar,
+    };
+  },
 };
 </script>
 
@@ -118,32 +118,71 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
-  width: 280px;
+  width: 250px;
+  min-width: 60px;
   height: 100vh;
   background: #19223a;
   color: #fff;
   padding: 0 0 20px 0;
   box-shadow: 2px 0 16px rgba(44, 62, 80, 0.12);
-  z-index: 100;
+  z-index: 200;
   display: flex;
   flex-direction: column;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  transition: width 0.2s;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar.mobile {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  transition: width 0.2s;
+}
+
+.sidebar.mobile.open {
+  width: 220px;
+  min-width: 60px;
+  box-shadow: 2px 0 16px rgba(44, 62, 80, 0.22);
+  overflow: visible;
 }
 
 .sidebar-logo {
-  font-size: 1.4rem;
+  font-size: 0.9rem;
   font-weight: bold;
   letter-spacing: 1px;
   color: #fff;
-  padding: 13px 0 18px 28px;
+  padding: 13px 0 18px 18px;
   margin-bottom: 8px;
-  background: none;
+  background: #19223a;
   flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 101;
-  background: #19223a;
   border-bottom: 1px solid #eaf0f5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+}
+
+.sidebar-toggle {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-right: 8px;
+  outline: none;
+  display: flex;
+  align-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  justify-content: center;
 }
 
 .sidebar-menu {
@@ -183,10 +222,10 @@ a {
   color: #bfc9da;
   text-decoration: none;
   font-size: 0.9rem;
-  padding: 12px 28px;
-  /* border-radius: 8px; */
+  padding: 12px 18px;
   transition: background 0.2s, color 0.2s;
   gap: 12px;
+  /* border-radius: 0 20px 20px 0; */
 }
 
 a:hover {
@@ -201,6 +240,17 @@ a:hover {
   color: #bfc9da;
 }
 
+.sidebar.collapsed .icon {
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .sidebar-logo span:not(.sidebar-toggle span),
+.sidebar.collapsed a span:not(.icon),
+.sidebar.mobile:not(.open) a span:not(.icon),
+.sidebar.mobile:not(.open) .sidebar-logo span:not(.sidebar-toggle span) {
+  display: none !important;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   background: #22305a;
@@ -208,5 +258,48 @@ a:hover {
 ::-webkit-scrollbar-thumb {
   background: #2c3e50;
   border-radius: 4px;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(30, 34, 50, 0.35);
+  z-index: 199;
+  transition: opacity 0.2s;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    transition: width 0.2s;
+  }
+  .sidebar.open {
+    width: 220px;
+    min-width: 60px;
+    box-shadow: 2px 0 16px rgba(44, 62, 80, 0.22);
+    overflow: visible;
+  }
+  .sidebar-logo span:not(.sidebar-toggle span) {
+    display: none !important;
+  }
+  .sidebar.open .sidebar-logo span:not(.sidebar-toggle span) {
+    display: none !important;
+  }
+  .sidebar.open a span:not(.icon) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .sidebar.open {
+    width: 180px;
+    min-width: 0;
+  }
 }
 </style>

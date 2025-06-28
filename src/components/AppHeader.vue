@@ -141,27 +141,6 @@ const onInputBlur = () => {
 </script>
 
 <style scoped>
-.user-info button {
-  background: linear-gradient(90deg, #e74c3c 60%, #ff7675 100%);
-  color: #fff;
-  border: none;
-  /* padding: 8px 22px; */
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  box-shadow: 0 2px 10px rgba(231, 76, 60, 0.12);
-  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-  outline: none;
-  letter-spacing: 0.5px;
-  margin-left: 8px;
-}
-
-.user-info button:hover {
-  background: linear-gradient(90deg, #c0392b 60%, #fd5e53 100%);
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 6px 20px rgba(231, 76, 60, 0.22);
-}
 .header {
   position: relative;
   /* background: linear-gradient(90deg, #2c3e50 70%, #2980b9 100%); */
@@ -204,6 +183,7 @@ const onInputBlur = () => {
 
 .question {
   margin-left: 20px;
+
   font-size: 1.2rem;
   color: #555;
   cursor: pointer;
@@ -342,5 +322,113 @@ const onInputBlur = () => {
 /* Ẩn nút đăng xuất cũ */
 .user-info {
   display: none;
+}
+
+@media (max-width: 900px) {
+  .header {
+    padding: 8px 6px;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .search-container {
+    max-width: 100vw;
+    width: 100%;
+    margin: 0;
+    flex: 1 1 0;
+    display: flex;
+    justify-content: center;
+  }
+  .search-input {
+    width: 70%;
+    min-width: 120px;
+    max-width: 350px;
+    font-size: 15px;
+    padding: 8px 8px;
+    margin: 0 auto;
+    display: block;
+  }
+  .user-dropdown {
+    margin-left: 8px;
+    margin-top: 0;
+  }
+  .user-name {
+    max-width: 60px;
+    font-size: 0.92rem;
+    display: none;
+  }
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.95rem;
+    margin-right: 4px;
+  }
+  .dropdown-menu {
+    min-width: 120px;
+    right: 0;
+    top: 110%;
+  }
+  .dropdown-item {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  .question,
+  .Notification {
+    margin-left: 15px;
+    padding-right: 15px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .header {
+    padding: 4px 1vw;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .search-container {
+    margin-bottom: 0;
+    flex: 1 1 0;
+    display: flex;
+    justify-content: center;
+  }
+  .search-input {
+    width: 60%;
+    min-width: 80px;
+    max-width: 200px;
+    font-size: 0.95rem;
+    padding: 7px 6px;
+    margin: 0 auto;
+    display: block;
+  }
+  .user-dropdown {
+    margin-left: 4px;
+    margin-top: 0;
+  }
+  .user-name {
+    display: none;
+  }
+  .dropdown-menu {
+    min-width: 100px;
+    right: 0;
+    top: 110%;
+  }
+  .dropdown-item {
+    padding: 7px 8px;
+    font-size: 0.88rem;
+  }
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.9rem;
+    margin-right: 2px;
+  }
+  .question,
+  .Notification {
+    margin-left: 4px;
+    font-size: 0.9rem;
+  }
 }
 </style>
