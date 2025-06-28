@@ -10,29 +10,44 @@
       v-show="!isMobile || mobileOpen"
     >
       <div class="sidebar-logo">
-        <!-- Luôn hiện nút bars khi collapsed (không phải mobile) -->
+        <!-- Hamburger luôn hiện khi là mobile hoặc collapsed -->
         <button class="sidebar-toggle" @click="toggleSidebar">
           <span v-if="isMobile ? !mobileOpen : isCollapsed">
             <i class="fa-solid fa-bars"></i>
           </span>
           <span v-else>✕</span>
         </button>
-        <span v-if="!isCollapsed && !isMobile">MiniMarkit</span>
+        <span v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
+          >MiniMarket</span
+        >
       </div>
       <ul class="sidebar-menu">
         <li v-for="item in menuItems" :key="item.to">
           <router-link :to="item.to" @click="closeMobileSidebar">
             <span class="icon">{{ item.icon }}</span>
-            <span v-if="!isCollapsed && !isMobile">{{ item.label }}</span>
+            <span
+              v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
+              >{{ item.label }}</span
+            >
           </router-link>
         </li>
       </ul>
     </nav>
+    <!-- Overlay chỉ hiện khi mobileOpen -->
     <div
       v-if="isMobile && mobileOpen"
       class="sidebar-overlay"
       @click="closeMobileSidebar"
     ></div>
+    <!-- Hamburger button khi mobile và menu đang đóng -->
+    <button
+      v-if="isMobile && !mobileOpen"
+      class="sidebar-hamburger"
+      @click="toggleSidebar"
+      aria-label="Open menu"
+    >
+      <i class="fa-solid fa-bars"></i>
+    </button>
   </div>
 </template>
 
@@ -151,7 +166,7 @@ export default {
 }
 
 .sidebar-logo {
-  font-size: 0.9rem;
+  font-size: 1.3rem;
   font-weight: bold;
   letter-spacing: 1px;
   color: #fff;
@@ -173,7 +188,7 @@ export default {
   background: none;
   border: none;
   color: #fff;
-  font-size: 1.2rem;
+  font-size: 1rem;
   cursor: pointer;
   margin-right: 8px;
   outline: none;
@@ -271,6 +286,30 @@ a:hover {
   transition: opacity 0.2s;
 }
 
+.sidebar-hamburger {
+  position: fixed;
+  top: 2px;
+  /* left: 16px; */
+  z-index: 300;
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.12);
+}
+@media (min-width: 901px) {
+  .sidebar-hamburger {
+    display: none !important;
+  }
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .sidebar {
@@ -288,11 +327,17 @@ a:hover {
   .sidebar-logo span:not(.sidebar-toggle span) {
     display: none !important;
   }
-  .sidebar.open .sidebar-logo span:not(.sidebar-toggle span) {
+  /* Sửa lại: chỉ ẩn label khi menu đóng, khi open thì hiện */
+  .sidebar:not(.open) .sidebar-logo span:not(.sidebar-toggle span) {
     display: none !important;
   }
-  .sidebar.open a span:not(.icon) {
+  .sidebar:not(.open) a span:not(.icon) {
     display: none !important;
+  }
+  /* Khi open thì label vẫn hiện */
+  .sidebar.open .sidebar-logo span:not(.sidebar-toggle span),
+  .sidebar.open a span:not(.icon) {
+    display: inline !important;
   }
 }
 

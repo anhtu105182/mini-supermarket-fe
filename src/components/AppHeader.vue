@@ -365,7 +365,7 @@ const onInputBlur = () => {
     margin-right: 4px;
   }
   .dropdown-menu {
-    min-width: 120px;
+    min-width: 200px;
     right: 0;
     top: 110%;
   }
@@ -378,6 +378,9 @@ const onInputBlur = () => {
     margin-left: 15px;
     padding-right: 15px;
     font-size: 0.95rem;
+  }
+  .dropdown-icon {
+    display: none;
   }
 }
 
@@ -411,13 +414,15 @@ const onInputBlur = () => {
     display: none;
   }
   .dropdown-menu {
-    min-width: 100px;
+    /* min-width: 200px; */
     right: 0;
     top: 110%;
+    width: 120px;
   }
   .dropdown-item {
     padding: 7px 8px;
     font-size: 0.88rem;
+    /* width: 10px; */
   }
   .user-avatar {
     width: 24px;
