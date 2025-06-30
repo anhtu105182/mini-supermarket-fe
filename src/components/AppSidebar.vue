@@ -140,7 +140,7 @@ export default {
   color: #fff;
   padding: 0 0 20px 0;
   box-shadow: 2px 0 16px rgba(44, 62, 80, 0.12);
-  z-index: 200;
+  z-index: 4000; /* Đặt sidebar cao hơn header */
   display: flex;
   flex-direction: column;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -288,25 +288,26 @@ a:hover {
 
 .sidebar-hamburger {
   position: fixed;
-  top: 2px;
+  top: 10px;
   /* left: 16px; */
-  z-index: 300;
+  z-index: 4000; /* Đặt sidebar cao hơn header */
   background: #ffffff;
   color: #000000;
   border: none;
   border-radius: 6px;
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.3rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.12);
+  /* box-shadow: 0 2px 8px rgba(44, 62, 80, 0.12); */
 }
 @media (min-width: 901px) {
   .sidebar-hamburger {
     display: none !important;
+    z-index: 4000; /* Đặt sidebar cao hơn header */
   }
 }
 
@@ -317,6 +318,7 @@ a:hover {
     min-width: 0;
     overflow: hidden;
     transition: width 0.2s;
+    z-index: 4000; /* Đặt sidebar cao hơn header */
   }
   .sidebar.open {
     width: 220px;
@@ -345,6 +347,40 @@ a:hover {
   .sidebar.open {
     width: 180px;
     min-width: 0;
+    z-index: 4000; /* Đặt sidebar cao hơn header */
+  }
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  margin-top: 80px; /* Để tránh header overlap */
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  margin-left: 250px; /* Để tránh sidebar overlap, đúng với sidebar rộng 250px */
+  transition: margin-left 0.2s;
+}
+
+/* Khi sidebar collapsed */
+@media (min-width: 901px) {
+  .sidebar.collapsed ~ .content {
+    margin-left: 70px !important;
+  }
+}
+
+/* Khi sidebar mobile (ẩn hoặc thu nhỏ) */
+@media (max-width: 900px) {
+  .content {
+    margin-left: 0 !important;
   }
 }
 </style>

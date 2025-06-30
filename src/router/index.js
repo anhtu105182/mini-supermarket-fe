@@ -5,6 +5,7 @@ import RegisterPage from "@/views/RegisterPage.vue";
 import DashboardOverview from "@/views/DashboardOverview.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
+import ProductList from "@/views/Product/ProductList.vue";
 const routes = [
   {
     path: "/",
@@ -12,9 +13,18 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: "",
+        redirect: { name: "DashboardOverview" },
+      },
+      {
         path: "dashboard",
         name: "DashboardOverview",
         component: DashboardOverview,
+      },
+      {
+        path: "products",
+        name: "ProductCollections",
+        component: ProductList,
       },
 
       // Thêm các route con khác nếu cần

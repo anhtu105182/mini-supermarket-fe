@@ -6,7 +6,8 @@
       <AppSidebar />
       <div class="content">
         <!-- Nội dung của Dashboard sẽ được render ở đây -->
-        <slot />
+        <!-- <div class="test">Test render</div> -->
+        <router-view />
       </div>
     </div>
   </div>
@@ -36,9 +37,31 @@ export default {
   display: flex;
   flex: 1;
 }
+.main-content {
+  margin-top: 60px; /* Để tránh header */
+  margin-left: 250px; /* Căn chỉnh với sidebar */
+  transition: margin-left 0.2s;
+}
+
+.sidebar.collapsed ~ .main-content {
+  margin-left: 70px;
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
 
 .content {
   flex: 1;
   padding: 20px;
+}
+.test {
+  color: red;
+  font-weight: bold;
+  font-size: 20px;
+  background: black;
+  margin: 50px;
 }
 </style>

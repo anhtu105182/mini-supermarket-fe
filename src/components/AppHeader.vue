@@ -142,16 +142,27 @@ const onInputBlur = () => {
 
 <style scoped>
 .header {
-  position: relative;
+  position: fixed;
+  /* top: 60px;  */
+  left: 0;
+  width: 100%;
+  z-index: 2000; /* Đặt header thấp hơn menu */
   /* background: linear-gradient(90deg, #2c3e50 70%, #2980b9 100%); */
+  background: #f5f5f5;
   color: black;
-  padding: 9px 32px;
+  /* padding: 18px 0px 18px px; */
+  padding-top: 10px;
+  padding-bottom: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
   box-shadow: 0 2px 12px rgba(44, 62, 80, 0.08);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   border-bottom: 2px solid #b5b5b5;
+}
+
+.sidebar {
+  z-index: 2000; /* Đặt sidebar thấp hơn header */
 }
 
 /* input */
@@ -242,6 +253,7 @@ const onInputBlur = () => {
   margin-left: 24px;
   outline: none;
   user-select: none;
+  margin-right: 20px;
 }
 
 .user-avatar {
@@ -326,7 +338,13 @@ const onInputBlur = () => {
 
 @media (max-width: 900px) {
   .header {
-    padding: 8px 6px;
+    z-index: 1998;
+  }
+  .sidebar {
+    z-index: 2000;
+  }
+  .header {
+    padding: 14px 12px;
     flex-wrap: nowrap;
     flex-direction: row;
     justify-content: space-between;
@@ -341,7 +359,7 @@ const onInputBlur = () => {
     justify-content: center;
   }
   .search-input {
-    width: 70%;
+    width: 100%;
     min-width: 120px;
     max-width: 350px;
     font-size: 15px;
@@ -386,7 +404,7 @@ const onInputBlur = () => {
 
 @media (max-width: 600px) {
   .header {
-    padding: 4px 1vw;
+    padding: 14px 12px;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
@@ -407,7 +425,7 @@ const onInputBlur = () => {
     display: block;
   }
   .user-dropdown {
-    margin-left: 4px;
+    margin-left: 12px;
     margin-top: 0;
   }
   .user-name {

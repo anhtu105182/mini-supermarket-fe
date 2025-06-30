@@ -46,6 +46,8 @@ supermarket-app/
 │   │   ├── Login.vue                 # Trang đăng nhập
 │   │   ├── NotFound.vue             # Trang 404 khi không tìm thấy route
 │   │   ├── Product/                  # Quản lý sản phẩm
+│   │   │   ├── collections.vue       # Danh muc sản phẩm
+│   │   │   ├── catalogs.vue          # ban gia  sản phẩm
 │   │   │   ├── ProductList.vue       # Danh sách sản phẩm
 │   │   │   └── ProductForm.vue       # Form thêm/sửa sản phẩm
 │   │   ├── Inventory/                # Quản lý kho
