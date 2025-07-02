@@ -22,8 +22,46 @@
         >
       </div>
       <ul class="sidebar-menu">
-        <li v-for="item in menuItems" :key="item.to">
-          <router-link :to="item.to" @click="closeMobileSidebar">
+        <li v-for="item in menuItems" :key="item.to || item.label">
+          <div v-if="item.children" class="sidebar-parent">
+            <a
+              href="javascript:void(0)"
+              @click="handleParentClick(item)"
+              :class="{ active: isParentOpen(item) }"
+            >
+              <span class="icon">{{ item.icon }}</span>
+              <span
+                v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
+                >{{ item.label }}</span
+              >
+              <span
+                class="submenu-arrow"
+                v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
+              >
+                <!-- <i
+                  :class="
+                    isParentOpen(item)
+                      ? 'fa fa-chevron-down'
+                      : 'fa fa-chevron-right'
+                  "
+                ></i> -->
+              </span>
+            </a>
+            <ul v-show="isParentOpen(item)" class="sidebar-submenu">
+              <li v-for="sub in item.children" :key="sub.to">
+                <router-link :to="sub.to" @click="closeMobileSidebar">
+                  <span class="icon">{{ sub.icon }}</span>
+                  <span
+                    v-if="
+                      (!isCollapsed && !isMobile) || (isMobile && mobileOpen)
+                    "
+                    >{{ sub.label }}</span
+                  >
+                </router-link>
+              </li>
+            </ul>
+          </div>
+          <router-link v-else :to="item.to" @click="closeMobileSidebar">
             <span class="icon">{{ item.icon }}</span>
             <span
               v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
@@ -53,6 +91,7 @@
 
 <script>
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useRouter } from "vue-router";
 export default {
   name: "AppSidebar",
   setup() {
@@ -60,27 +99,92 @@ export default {
     const isMobile = ref(false);
     const mobileOpen = ref(false);
 
+    // Thêm state để quản lý submenu đang mở
+    const openParent = ref(null);
+
+    // Thay đổi menuItems để có submenu cho "Sản phẩm"
     const menuItems = [
       { to: "/dashboard", icon: "🏠", label: "Tổng quan" },
-      { to: "/orders", icon: "🧾", label: "Đơn hàng" },
-      { to: "/orders/list", icon: "📋", label: "Danh sách đơn hàng" },
-      { to: "/orders/draft", icon: "📝", label: "Đơn hàng nháp" },
-      { to: "/orders/return", icon: "↩️", label: "Trả hàng" },
-      { to: "/orders/incomplete", icon: "⏳", label: "Đơn chưa hoàn tất" },
-      { to: "/shipping", icon: "🚚", label: "Vận chuyển" },
-      { to: "/products", icon: "📦", label: "Sản phẩm" },
-      { to: "/inventory", icon: "🏠", label: "Quản lý kho" },
-      { to: "/inventory/stock", icon: "📊", label: "Tồn kho" },
-      { to: "/inventory/order", icon: "🛒", label: "Đặt hàng nhập" },
-      { to: "/inventory/receive", icon: "📥", label: "Nhập hàng" },
-      { to: "/inventory/return", icon: "↩️", label: "Trả hàng nhập" },
-      { to: "/suppliers", icon: "🏭", label: "Nhà cung cấp" },
-      { to: "/customers", icon: "👤", label: "Khách hàng" },
-      { to: "/promotion", icon: "🎁", label: "Khuyến mại" },
+
+      {
+        icon: "🧾",
+        label: "Đơn hàng",
+        children: [
+          { to: "/Orders", icon: "📋", label: "Danh sách đơn hàng" },
+          { to: "/Draft_Orders", icon: "📝", label: "Đơn hàng nháp" },
+          { to: "/Order_Returns", icon: "↩️", label: "Trả hàng" },
+          { to: "/Checkouts", icon: "⏳", label: "Đơn chưa hoàn tất" },
+        ],
+      },
+
+      {
+        icon: "🚚",
+        label: "Vận chuyển",
+        children: [
+          { to: "/reports-shipments", icon: "", label: "Tổng quan" },
+          { to: "/shipments", icon: "", label: "Vận đơn" },
+        ],
+      },
+      {
+        icon: "📦",
+        label: "Sản phẩm",
+        children: [
+          { to: "/products", icon: "", label: "Danh sách sản phẩm" },
+          { to: "/collections", icon: "", label: "Danh mục sản phẩm" },
+          { to: "/catalogs", icon: "", label: "Bảng giá" },
+        ],
+      },
+
+      {
+        icon: "🏠",
+        label: "Quản lý kho",
+        children: [
+          { to: "/inventories", icon: "", label: "Tồn kho" },
+          { to: "/purchase_order", icon: "", label: "Đặt hàng nhập" },
+          { to: "/receive_inventories", icon: "", label: "Nhập hàng" },
+          { to: "/rupplier_returns", icon: "", label: "Trả hàng nhập" },
+          { to: "/stock_transfers", icon: "", label: "Chuyển Kho" },
+          { to: "/suppliers", icon: "", label: "Nhà cung cấp" },
+        ],
+      },
+      {
+        icon: "👤",
+        label: "Khách hàng",
+        children: [
+          { to: "/customer-list", icon: "", label: "Khách hàng" },
+          { to: "/customer-groups", icon: "", label: "Nhóm khách hàng" },
+        ],
+      },
+      { to: "/discounts", icon: "🎁", label: "Khuyến mại" },
       { to: "/fund", icon: "💰", label: "Sổ quỹ" },
-      { to: "/report", icon: "📈", label: "Báo cáo" },
-      { to: "/settings", icon: "⚙️", label: "Cấu hình" },
+      {
+        icon: "📈",
+        label: "Báo cáo",
+        children: [
+          { to: "/reports", icon: "", label: "Tổng quan báo cáo" },
+          { to: "/reports_list", icon: "", label: "Danh sách báo cáo" },
+        ],
+      },
     ];
+
+    const router = useRouter();
+
+    // Xác định parent nào đang mở
+    const isParentOpen = (item) => openParent.value === item.label;
+
+    // Xử lý khi click vào parent
+    const handleParentClick = (item) => {
+      if (openParent.value === item.label) {
+        openParent.value = null;
+      } else {
+        openParent.value = item.label;
+        // Tự động chuyển hướng sang trang đầu tiên của submenu nếu chưa ở đó
+        if (item.children && item.children[0]?.to) {
+          router.push(item.children[0].to);
+          closeMobileSidebar();
+        }
+      }
+    };
 
     const handleResize = () => {
       if (window.innerWidth <= 900) {
@@ -123,6 +227,9 @@ export default {
       menuItems,
       toggleSidebar,
       closeMobileSidebar,
+      openParent,
+      isParentOpen,
+      handleParentClick,
     };
   },
 };
@@ -382,5 +489,34 @@ a:hover {
   .content {
     margin-left: 0 !important;
   }
+}
+
+.sidebar-submenu {
+  background: #202a48;
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+}
+.sidebar-submenu li {
+  margin-bottom: 0;
+}
+.sidebar-submenu a {
+  padding-left: 38px;
+  font-size: 0.88rem;
+  background: none;
+}
+.sidebar-parent > a {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.submenu-arrow {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: #bfc9da;
+  min-width: 18px;
+  text-align: right;
 }
 </style>

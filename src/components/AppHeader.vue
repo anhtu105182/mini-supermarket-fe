@@ -107,6 +107,8 @@ export default {
     };
     const logout = () => {
       // Xử lý đăng xuất
+      window.location.href = "/login"; /// để tạm chuyển hướng đến trang đăng nhập
+      // Có thể gọi API đăng xuất ở đây
       console.log("Đăng xuất");
     };
 

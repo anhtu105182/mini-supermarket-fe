@@ -48,8 +48,7 @@ supermarket-app/
 │   │   ├── Product/                  # Quản lý sản phẩm
 │   │   │   ├── collections.vue       # Danh muc sản phẩm
 │   │   │   ├── catalogs.vue          # ban gia  sản phẩm
-│   │   │   ├── ProductList.vue       # Danh sách sản phẩm
-│   │   │   └── ProductForm.vue       # Form thêm/sửa sản phẩm
+│   │   │   └── ProductList.vue       # Danh sách sản phẩm
 │   │   ├── Inventory/                # Quản lý kho
 │   │   │   ├── InventoryList.vue     # Danh sách tồn kho
 │   │   │   └── StockReport.vue       # Báo cáo nhập/xuất kho
