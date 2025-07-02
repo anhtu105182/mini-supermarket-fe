@@ -110,10 +110,10 @@ export default {
         icon: "🧾",
         label: "Đơn hàng",
         children: [
-          { to: "/Orders", icon: "📋", label: "Danh sách đơn hàng" },
-          { to: "/Draft_Orders", icon: "📝", label: "Đơn hàng nháp" },
-          { to: "/Order_Returns", icon: "↩️", label: "Trả hàng" },
-          { to: "/Checkouts", icon: "⏳", label: "Đơn chưa hoàn tất" },
+          { to: "/orders", icon: "", label: "Danh sách đơn hàng" },
+          { to: "/draft-orders", icon: "", label: "Đơn hàng nháp" },
+          { to: "/order-returns", icon: "↩", label: "Trả hàng" },
+          { to: "/checkouts", icon: "", label: "Đơn chưa hoàn tất" },
         ],
       },
 
@@ -140,10 +140,10 @@ export default {
         label: "Quản lý kho",
         children: [
           { to: "/inventories", icon: "", label: "Tồn kho" },
-          { to: "/purchase_order", icon: "", label: "Đặt hàng nhập" },
-          { to: "/receive_inventories", icon: "", label: "Nhập hàng" },
-          { to: "/rupplier_returns", icon: "", label: "Trả hàng nhập" },
-          { to: "/stock_transfers", icon: "", label: "Chuyển Kho" },
+          { to: "/purchase-orders", icon: "", label: "Đặt hàng nhập" },
+          { to: "/receive-inventories", icon: "", label: "Nhập hàng" },
+          { to: "/supplier-returns", icon: "", label: "Trả hàng nhập" },
+          { to: "/stock-transfers", icon: "", label: "Chuyển Kho" },
           { to: "/suppliers", icon: "", label: "Nhà cung cấp" },
         ],
       },
@@ -162,7 +162,7 @@ export default {
         label: "Báo cáo",
         children: [
           { to: "/reports", icon: "", label: "Tổng quan báo cáo" },
-          { to: "/reports_list", icon: "", label: "Danh sách báo cáo" },
+          { to: "/reports-list", icon: "", label: "Danh sách báo cáo" },
         ],
       },
     ];
