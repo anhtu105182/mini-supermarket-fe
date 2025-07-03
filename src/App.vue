@@ -14,13 +14,14 @@
 /* Nếu cần style global, nên đặt trong src/style/main.css và import vào main.js */
 :deep(html, body) {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f8f8f8;
 }
-
 </style>
 <style>
 body {
   margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "San Francisco",
+    "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 </style>

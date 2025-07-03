@@ -55,7 +55,7 @@ export default {
 
 .content {
   flex: 1;
-  padding: 20px;
+  /* padding: 20px; */
 }
 .test {
   color: red;

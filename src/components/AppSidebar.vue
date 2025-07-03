@@ -112,7 +112,7 @@ export default {
         children: [
           { to: "/orders", icon: "", label: "Danh sách đơn hàng" },
           { to: "/draft-orders", icon: "", label: "Đơn hàng nháp" },
-          { to: "/order-returns", icon: "↩", label: "Trả hàng" },
+          { to: "/order-returns", icon: "", label: "Trả hàng" },
           { to: "/checkouts", icon: "", label: "Đơn chưa hoàn tất" },
         ],
       },

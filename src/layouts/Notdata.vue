@@ -2,7 +2,7 @@
   <div class="orders-page">
     <div class="orders-header">
       <h1 class="orders-title">Danh sách vận đơn</h1>
-      <!-- <div class="export-file" @click="showExportModal = true">Xuất file</div> -->
+      <div class="export-file" @click="showExportModal = true">Xuất file</div>
     </div>
     <div class="orders-table">
       <table>
@@ -35,18 +35,77 @@
           Cửa hàng của bạn chưa có vận đơn nào
         </div>
         <div class="orders-empty-desc">Tạo mới vận đơn của bạn</div>
-        <div class="orders-empty-actions">
-          <!-- <button class="orders-add-btn-import">
-            <i class="fa-solid fa-upload"></i>Nhập file
-          </button> -->
-          <button class="orders-add-btn">
-            <i class="fa fa-plus-circle"></i> Tạo vận đơn
-          </button>
-        </div>
+        <button class="orders-add-btn">
+          <i class="fa fa-plus-circle"></i> Tạo vận đơn
+        </button>
       </div>
     </div>
     <div class="orders-footer">
       Tìm hiểu về <a href="#" class="orders-link">vận đơn </a>
+    </div>
+    <!-- Modal Xuất file -->
+    <div
+      v-if="showExportModal"
+      class="modal-overlay"
+      @click.self="showExportModal = false"
+    >
+      <div class="modal-export">
+        <div class="modal-header">
+          <span>Xuất file danh sách vận đơn</span>
+          <button class="modal-close" @click="showExportModal = false">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-section">
+            <div class="modal-label">Chọn vận đơn:</div>
+            <label class="modal-radio">
+              <input type="radio" value="all" v-model="shipmentScope" />
+              <span>Tất cả vận đơn</span>
+            </label>
+            <label class="modal-radio">
+              <input type="radio" value="page" v-model="shipmentScope" />
+              <span>Vận đơn trên trang này</span>
+            </label>
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">Loại xuất file:</div>
+            <label class="modal-radio">
+              <input
+                type="radio"
+                value="overview-shipment"
+                v-model="exportType"
+              />
+              <span>File tổng quan theo vận đơn</span>
+            </label>
+            <label class="modal-radio">
+              <input
+                type="radio"
+                value="overview-product"
+                v-model="exportType"
+              />
+              <span>File tổng quan theo sản phẩm</span>
+            </label>
+            <label class="modal-radio">
+              <input type="radio" value="detail" v-model="exportType" />
+              <span>File chi tiết</span>
+            </label>
+          </div>
+          <div class="modal-section">
+            <a href="#" class="modal-link">
+              <i class="fa fa-cog"></i> Tùy chọn trường dữ liệu xuất
+            </a>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn cancel" @click="showExportModal = false">
+            Hủy
+          </button>
+          <button class="modal-btn export" @click="exportFile">
+            Xuất file
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -156,12 +215,6 @@ td {
   margin-bottom: 18px;
   text-align: center;
 }
-.orders-empty-actions {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  gap: 16px;
-}
 .orders-add-btn {
   background: #2196f3;
   color: #fff;
@@ -179,22 +232,6 @@ td {
 }
 .orders-add-btn:hover {
   background: #1976d2;
-}
-.orders-add-btn-import {
-  background: #fbfdff;
-  color: #2196f3;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
-  border: 1px solid #2196f3;
 }
 .orders-footer {
   text-align: right;
