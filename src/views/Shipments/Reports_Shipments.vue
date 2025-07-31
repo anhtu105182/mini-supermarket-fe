@@ -1,29 +1,30 @@
 <template>
   <div class="shipment-dashboard">
+    <!-- Header + Filters -->
     <div class="shipment-header">
       <h2>Tổng quan vận chuyển</h2>
       <div class="shipment-filters">
-        <select v-model="selectedDate">
-          <option>7 ngày qua (25/07 - 31/07/2025)</option>
-          <option>Tháng này (07/2025)</option>
-          <option>Tháng trước (06/2025)</option>
-        </select>
-        <select v-model="selectedBranch">
-          <option>Tất cả chi nhánh</option>
-          <option>Chi nhánh 1</option>
-          <option>Chi nhánh 2</option>
-        </select>
-        <select v-model="selectedArea">
-          <option>Khu vực</option>
-          <option>Hà Nội</option>
-          <option>Hồ Chí Minh</option>
-        </select>
+        <div class="filter-btn">
+          <span class="icon">📅</span>
+          {{ selectedDate }}
+          <span class="icon">▼</span>
+        </div>
+        <div class="filter-btn">
+          {{ selectedBranch }}
+          <span class="icon">▼</span>
+        </div>
+        <div class="filter-btn">
+          {{ selectedArea }}
+          <span class="icon">▼</span>
+        </div>
         <button class="btn-connect">
-          <span style="font-size: 1.2em; margin-right: 4px">➕</span> Kết nối
-          vận chuyển
+          <span style="font-size: 1.2em; margin-right: 4px">➕</span>
+          Kết nối vận chuyển
         </button>
       </div>
     </div>
+
+    <!-- Status Cards -->
     <div class="shipment-status-cards">
       <div class="status-card" v-for="item in statusList" :key="item.label">
         <div class="status-title">{{ item.label }}</div>
@@ -33,67 +34,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Reports Section -->
     <div class="shipment-reports">
-      <div class="report-card">
-        <div class="report-title">Thời gian lấy hàng thành công trung bình</div>
+      <div class="report-card" v-for="report in reports" :key="report.title">
+        <div class="report-title">{{ report.title }}</div>
         <div class="report-content">
           <canvas
-            ref="pickupChartRef"
+            v-if="report.chartRef"
+            :ref="report.chartRef"
             class="big-chart"
-            width="260"
-            height="160"
           ></canvas>
-          <div v-if="avgPickupTime" class="big-number">
-            {{ avgPickupTime }} phút
+          <div v-if="report.value !== null" class="big-number">
+            {{ report.value }} {{ report.unit }}
           </div>
-          <div v-else class="no-data">Chưa có dữ liệu báo cáo</div>
-        </div>
-      </div>
-      <div class="report-card">
-        <div class="report-title">
-          Thời gian giao hàng thành công trung bình
-        </div>
-        <div class="report-content">
-          <canvas
-            ref="deliveryChartRef"
-            class="big-chart"
-            width="260"
-            height="160"
-          ></canvas>
-          <div v-if="avgDeliveryTime" class="big-number">
-            {{ avgDeliveryTime }} phút
+          <div v-else class="no-data">
+            <img src="/placeholder.svg" alt="empty" class="empty-img" />
+            <div>Chưa có dữ liệu báo cáo</div>
           </div>
-          <div v-else class="no-data">Chưa có dữ liệu báo cáo</div>
-        </div>
-      </div>
-      <div class="report-card">
-        <div class="report-title">Tỉ lệ giao hàng thành công</div>
-        <div class="report-content">
-          <canvas
-            ref="successPieRef"
-            class="big-pie"
-            width="120"
-            height="120"
-          ></canvas>
-          <div v-if="successRate !== null" class="big-number">
-            {{ successRate }}%
-          </div>
-          <div v-else class="no-data">Chưa có dữ liệu báo cáo</div>
-        </div>
-      </div>
-      <div class="report-card">
-        <div class="report-title">Tỉ trọng vận đơn</div>
-        <div class="report-content">
-          <canvas
-            ref="weightPieRef"
-            class="big-pie"
-            width="120"
-            height="120"
-          ></canvas>
-          <div v-if="orderWeight !== null" class="big-number">
-            {{ orderWeight }} kg
-          </div>
-          <div v-else class="no-data">Chưa có dữ liệu báo cáo</div>
         </div>
       </div>
     </div>
@@ -110,122 +68,134 @@ const selectedBranch = ref("Tất cả chi nhánh");
 const selectedArea = ref("Khu vực");
 
 const statusList = [
-  { label: "Chờ lấy hàng", value: 3, cod: "1.200.000đ" },
-  { label: "Đã lấy hàng", value: 8, cod: "2.500.000đ" },
-  { label: "Đang giao hàng", value: 5, cod: "1.800.000đ" },
-  { label: "Chờ giao lại", value: 1, cod: "200.000đ" },
-  { label: "Đang hoàn hàng", value: 0, cod: "0đ" },
+  { label: "Chờ lấy hàng", value: 4, cod: "1.100.000đ" },
+  { label: "Đã lấy hàng", value: 10, cod: "3.200.000đ" },
+  { label: "Đang giao hàng", value: 7, cod: "2.400.000đ" },
+  { label: "Chờ giao lại", value: 2, cod: "500.000đ" },
+  { label: "Đang hoàn hàng", value: 1, cod: "150.000đ" },
 ];
-const avgPickupTime = ref(45); // phút
-const avgDeliveryTime = ref(60); // phút
-const successRate = ref(92.5); // %
-const orderWeight = ref(120); // kg
 
-// Chart refs
+const reports = [
+  {
+    title: "Thời gian lấy hàng thành công trung bình",
+    value: 42,
+    unit: "phút",
+    chartRef: "pickupChartRef",
+  },
+  {
+    title: "Thời gian giao hàng thành công trung bình",
+    value: 58,
+    unit: "phút",
+    chartRef: "deliveryChartRef",
+  },
+  {
+    title: "Tỉ lệ giao hàng thành công",
+    value: 93,
+    unit: "%",
+    chartRef: "successPieRef",
+  },
+  {
+    title: "Tỉ trọng vận đơn",
+    value: 135,
+    unit: "kg",
+    chartRef: "weightPieRef",
+  },
+];
+
 const pickupChartRef = ref(null);
 const deliveryChartRef = ref(null);
 const successPieRef = ref(null);
 const weightPieRef = ref(null);
 
 onMounted(() => {
-  // Bar chart for pickup time
-  if (pickupChartRef.value) {
-    new Chart(pickupChartRef.value, {
-      type: "bar",
-      data: {
-        labels: ["CN1", "CN2", "CN3"],
-        datasets: [
-          {
-            label: "Thời gian lấy hàng (phút)",
-            data: [45, 50, 40],
-            backgroundColor: ["#2196f3", "#21cbf3", "#90caf9"],
-          },
-        ],
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } },
-      },
-    });
-  }
-  // Bar chart for delivery time
-  if (deliveryChartRef.value) {
-    new Chart(deliveryChartRef.value, {
-      type: "bar",
-      data: {
-        labels: ["CN1", "CN2", "CN3"],
-        datasets: [
-          {
-            label: "Thời gian giao hàng (phút)",
-            data: [60, 55, 65],
-            backgroundColor: ["#43a047", "#66bb6a", "#b2dfdb"],
-          },
-        ],
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } },
-      },
-    });
-  }
-  // Pie chart for success rate
-  if (successPieRef.value) {
-    new Chart(successPieRef.value, {
-      type: "doughnut",
-      data: {
-        labels: ["Thành công", "Thất bại"],
-        datasets: [
-          {
-            data: [92.5, 7.5],
-            backgroundColor: ["#2196f3", "#e0e0e0"],
-          },
-        ],
-      },
-      options: {
-        plugins: { legend: { display: true, position: "bottom" } },
-        cutout: "70%",
-      },
-    });
-  }
-  // Pie chart for order weight
-  if (weightPieRef.value) {
-    new Chart(weightPieRef.value, {
-      type: "doughnut",
-      data: {
-        labels: ["Đơn nặng", "Đơn nhẹ"],
-        datasets: [
-          {
-            data: [80, 40],
-            backgroundColor: ["#ff9800", "#ffe0b2"],
-          },
-        ],
-      },
-      options: {
-        plugins: { legend: { display: true, position: "bottom" } },
-        cutout: "70%",
-      },
-    });
-  }
+  new Chart(pickupChartRef.value, {
+    type: "bar",
+    data: {
+      labels: ["CN1", "CN2", "CN3"],
+      datasets: [
+        {
+          label: "Lấy hàng (phút)",
+          data: [42, 45, 40],
+          backgroundColor: ["#42a5f5", "#90caf9", "#e3f2fd"],
+        },
+      ],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+
+  new Chart(deliveryChartRef.value, {
+    type: "bar",
+    data: {
+      labels: ["CN1", "CN2", "CN3"],
+      datasets: [
+        {
+          label: "Giao hàng (phút)",
+          data: [58, 60, 55],
+          backgroundColor: ["#66bb6a", "#a5d6a7", "#e8f5e9"],
+        },
+      ],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+
+  new Chart(successPieRef.value, {
+    type: "doughnut",
+    data: {
+      labels: ["Thành công", "Thất bại"],
+      datasets: [
+        {
+          data: [93, 7],
+          backgroundColor: ["#42a5f5", "#e0e0e0"],
+        },
+      ],
+    },
+    options: {
+      plugins: { legend: { display: true, position: "bottom" } },
+      cutout: "70%",
+    },
+  });
+
+  new Chart(weightPieRef.value, {
+    type: "doughnut",
+    data: {
+      labels: ["Nặng", "Nhẹ"],
+      datasets: [
+        {
+          data: [90, 45],
+          backgroundColor: ["#ffa726", "#ffe0b2"],
+        },
+      ],
+    },
+    options: {
+      plugins: { legend: { display: true, position: "bottom" } },
+      cutout: "70%",
+    },
+  });
 });
 </script>
 
 <style scoped>
 .shipment-dashboard {
   max-width: 1300px;
-  margin: 0 auto;
-  padding: 24px 12px 32px 12px;
-  background: #f7f7f9;
+  margin: auto;
+  padding: 24px;
+  background: #f8f9fb;
 }
 .shipment-header {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 }
 .shipment-header h2 {
   font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 8px;
+  font-weight: 700;
   color: #222;
 }
 .shipment-filters {
@@ -234,12 +204,19 @@ onMounted(() => {
   gap: 12px;
   align-items: center;
 }
-.shipment-filters select {
-  padding: 7px 16px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
+.filter-btn {
   background: #fff;
-  font-size: 1rem;
+  border: 1px solid #ddd;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.icon {
+  color: #666;
 }
 .btn-connect {
   background: #2196f3;
@@ -259,32 +236,36 @@ onMounted(() => {
 .shipment-status-cards {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 .status-card {
   background: #fff;
   border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(44, 62, 80, 0.07);
-  padding: 18px 10px 12px 18px;
-  text-align: left;
-  min-width: 120px;
+  padding: 16px;
+  box-shadow: 0 0 0 1px #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 90px;
 }
 .status-title {
-  font-size: 1.05rem;
-  color: #2196f3;
+  font-size: 0.95rem;
+  color: #777;
   font-weight: 500;
-  margin-bottom: 6px;
 }
 .status-value {
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #222;
 }
 .status-cod {
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   color: #888;
-  margin-top: 2px;
+}
+.status-cod::before {
+  content: "\1F4B0 ";
+  margin-right: 4px;
 }
 .shipment-reports {
   display: grid;
@@ -294,20 +275,17 @@ onMounted(() => {
 .report-card {
   background: #fff;
   border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(44, 62, 80, 0.07);
-  padding: 18px 18px 18px 18px;
-  min-height: 220px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  min-height: 240px;
 }
 .report-title {
   font-size: 1.1rem;
   font-weight: 600;
+  margin-bottom: 12px;
   color: #222;
-  margin-bottom: 10px;
 }
-/* Biểu đồ và số liệu lớn, căn giữa */
 .report-content {
   flex: 1;
   display: flex;
@@ -315,66 +293,62 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  width: 100%;
-}
-.big-chart,
-.big-pie {
-  max-width: 100%;
-  width: 220px;
-  height: 120px;
-  margin: 0 auto;
-  display: block;
-}
-.big-pie {
-  width: 120px;
-  height: 120px;
+  text-align: center;
 }
 .big-number {
-  font-size: 2.1rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: bold;
   color: #222;
-  margin-top: 8px;
-  text-align: center;
 }
 .no-data {
   color: #888;
-  font-size: 1.1rem;
-  margin-top: 8px;
+  font-size: 1rem;
 }
-@media (max-width: 900px) {
+.empty-img {
+  width: 80px;
+  opacity: 0.5;
+  margin-bottom: 6px;
+}
+@media (max-width: 1024px) {
   .shipment-status-cards {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
   .shipment-reports {
     grid-template-columns: 1fr;
   }
-  .big-chart,
-  .big-pie {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 180px !important;
+}
+
+@media (max-width: 768px) {
+  .shipment-filters {
+    flex-direction: column;
+    align-items: stretch;
   }
-  .report-card {
-    min-height: 260px;
-    padding: 14px 4px 14px 4px;
+  .btn-connect {
+    margin-left: 0;
+    width: 100%;
   }
-  .big-number {
-    font-size: 2.3rem;
+  .shipment-status-cards {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
-@media (max-width: 600px) {
-  .shipment-dashboard {
-    padding: 8px 2px 16px 2px;
-  }
+
+@media (max-width: 480px) {
   .shipment-header h2 {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
   }
-  .big-chart,
-  .big-pie {
-    height: 120px !important;
+  .filter-btn {
+    font-size: 0.9rem;
+    padding: 5px 10px;
+  }
+  .status-card {
+    padding: 12px;
+  }
+  .report-card {
+    padding: 12px;
+    min-height: 200px;
   }
   .big-number {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
   }
 }
 </style>
