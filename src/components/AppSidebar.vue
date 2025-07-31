@@ -257,7 +257,60 @@ export default {
 .sidebar.collapsed {
   width: 70px;
 }
-
+.sidebar.collapsed .sidebar-logo {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.sidebar.collapsed .sidebar-logo span:not(.sidebar-toggle span),
+.sidebar.collapsed a span:not(.icon),
+.sidebar.collapsed .submenu-arrow {
+  display: none !important;
+}
+.sidebar.collapsed .icon {
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.6rem;
+}
+.sidebar.collapsed .sidebar-menu {
+  align-items: center;
+}
+.sidebar.collapsed li {
+  display: flex;
+  justify-content: center;
+}
+.sidebar.collapsed a {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.sidebar.collapsed .sidebar-submenu {
+  display: none !important;
+}
+.sidebar.collapsed .sidebar-parent > a {
+  justify-content: center;
+}
+.sidebar.collapsed .sidebar-parent > a .submenu-arrow {
+  display: none !important;
+}
+.sidebar.collapsed .sidebar-parent > a.active {
+  background: #22305a;
+}
+.sidebar.collapsed a:hover,
+.sidebar.collapsed .sidebar-parent > a:hover {
+  background: #22305a;
+  color: #fff;
+}
+.sidebar.collapsed .icon {
+  color: #bfc9da;
+  transition: color 0.2s;
+}
+.sidebar.collapsed a:hover .icon,
+.sidebar.collapsed .sidebar-parent > a:hover .icon {
+  color: #fff;
+}
 .sidebar.mobile {
   width: 0;
   min-width: 0;
