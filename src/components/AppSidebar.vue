@@ -5,17 +5,20 @@
       :class="{
         collapsed: isCollapsed && !isMobile,
         mobile: isMobile,
-        open: isMobile ? mobileOpen : !isCollapsed,
+        open: isMobile && mobileOpen,
       }"
       v-show="!isMobile || mobileOpen"
+      :style="
+        isMobile && mobileOpen
+          ? 'width: 100vw; min-width: 0; max-width: 100vw; left: 0;'
+          : ''
+      "
     >
       <div class="sidebar-logo">
         <!-- Hamburger luôn hiện khi là mobile hoặc collapsed -->
         <button class="sidebar-toggle" @click="toggleSidebar">
-          <span v-if="isMobile ? !mobileOpen : isCollapsed">
-            <i class="fa-solid fa-bars"></i>
-          </span>
-          <span v-else>✕</span>
+          <span v-if="isMobile && mobileOpen">✕</span>
+          <span v-else><i class="fa-solid fa-bars"></i></span>
         </button>
         <span v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
           >MiniMarket</span
@@ -76,6 +79,7 @@
       v-if="isMobile && mobileOpen"
       class="sidebar-overlay"
       @click="closeMobileSidebar"
+      style="z-index: 3999"
     ></div>
     <!-- Hamburger button khi mobile và menu đang đóng -->
     <button
@@ -83,6 +87,7 @@
       class="sidebar-hamburger"
       @click="toggleSidebar"
       aria-label="Open menu"
+      style="z-index: 4001"
     >
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -236,6 +241,7 @@ export default {
 </script>
 
 <style scoped>
+/* Sidebar base styles */
 .sidebar {
   position: fixed;
   top: 0;
@@ -247,11 +253,11 @@ export default {
   color: #fff;
   padding: 0 0 20px 0;
   box-shadow: 2px 0 16px rgba(44, 62, 80, 0.12);
-  z-index: 4000; /* Đặt sidebar cao hơn header */
+  z-index: 4000;
   display: flex;
   flex-direction: column;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  transition: width 0.2s;
+  transition: width 0.2s, left 0.2s, max-width 0.2s;
 }
 
 .sidebar.collapsed {
@@ -311,16 +317,20 @@ export default {
 .sidebar.collapsed .sidebar-parent > a:hover .icon {
   color: #fff;
 }
+/* Mobile sidebar hidden by default */
 .sidebar.mobile {
   width: 0;
   min-width: 0;
+  max-width: 0;
+  left: -100vw;
   overflow: hidden;
-  transition: width 0.2s;
+  transition: width 0.2s, left 0.2s, max-width 0.2s;
 }
-
 .sidebar.mobile.open {
-  width: 220px;
-  min-width: 60px;
+  width: 100vw;
+  min-width: 0;
+  max-width: 100vw;
+  left: 0;
   box-shadow: 2px 0 16px rgba(44, 62, 80, 0.22);
   overflow: visible;
 }
@@ -476,27 +486,29 @@ a:hover {
   .sidebar {
     width: 0;
     min-width: 0;
+    max-width: 0;
+    left: -100vw;
     overflow: hidden;
-    transition: width 0.2s;
-    z-index: 4000; /* Đặt sidebar cao hơn header */
+    transition: width 0.2s, left 0.2s, max-width 0.2s;
+    z-index: 4000;
   }
   .sidebar.open {
-    width: 220px;
-    min-width: 60px;
+    width: 100vw;
+    min-width: 0;
+    max-width: 100vw;
+    left: 0;
     box-shadow: 2px 0 16px rgba(44, 62, 80, 0.22);
     overflow: visible;
   }
   .sidebar-logo span:not(.sidebar-toggle span) {
     display: none !important;
   }
-  /* Sửa lại: chỉ ẩn label khi menu đóng, khi open thì hiện */
   .sidebar:not(.open) .sidebar-logo span:not(.sidebar-toggle span) {
     display: none !important;
   }
   .sidebar:not(.open) a span:not(.icon) {
     display: none !important;
   }
-  /* Khi open thì label vẫn hiện */
   .sidebar.open .sidebar-logo span:not(.sidebar-toggle span),
   .sidebar.open a span:not(.icon) {
     display: inline !important;
@@ -505,9 +517,10 @@ a:hover {
 
 @media (max-width: 600px) {
   .sidebar.open {
-    width: 180px;
+    width: 100vw;
     min-width: 0;
-    z-index: 4000; /* Đặt sidebar cao hơn header */
+    max-width: 100vw;
+    z-index: 4000;
   }
 }
 

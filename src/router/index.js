@@ -151,7 +151,7 @@ const routes = [
       {
         path: "reports-shipments",
         name: "Reports-Shipments",
-        component: Reports - Shipments,
+        component: Reports_Shipments,
       },
       // Thêm các route con khác nếu cần
     ],

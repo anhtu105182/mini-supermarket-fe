@@ -40,6 +40,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
+import Swal from "sweetalert2"; // ✅ import SweetAlert2
 
 const router = useRouter();
 const { login } = useAuth();
@@ -54,9 +55,27 @@ const handleLogin = async () => {
   error.value = "";
   try {
     await login(username.value, password.value);
-    alert("Đăng nhập thành công!");
+
+    // ✅ Hiển thị alert đẹp
+    await Swal.fire({
+      icon: "success",
+      title: "Đăng nhập thành công!",
+      text: `Chào mừng ${username.value}!`,
+      timer: 2000,
+      showConfirmButton: false,
+      timerProgressBar: true,
+    });
+
     router.push({ name: "DashboardOverview" });
   } catch (err) {
+    // ❌ Alert lỗi
+    await Swal.fire({
+      icon: "error",
+      title: "Lỗi đăng nhập",
+      text: err.message || "Vui lòng thử lại.",
+      confirmButtonText: "Thử lại",
+    });
+
     error.value = err.message || "Đăng nhập thất bại. Vui lòng thử lại.";
   } finally {
     isLoading.value = false;
