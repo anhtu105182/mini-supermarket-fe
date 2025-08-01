@@ -37,21 +37,33 @@
 
     <!-- Reports Section -->
     <div class="shipment-reports">
-      <div class="report-card" v-for="report in reports" :key="report.title">
-        <div class="report-title">{{ report.title }}</div>
+      <div class="report-card">
+        <div class="report-title">Thời gian lấy hàng thành công trung bình</div>
         <div class="report-content">
-          <canvas
-            v-if="report.chartRef"
-            :ref="report.chartRef"
-            class="big-chart"
-          ></canvas>
-          <div v-if="report.value !== null" class="big-number">
-            {{ report.value }} {{ report.unit }}
-          </div>
-          <div v-else class="no-data">
-            <img src="/placeholder.svg" alt="empty" class="empty-img" />
-            <div>Chưa có dữ liệu báo cáo</div>
-          </div>
+          <canvas ref="pickupChartRef" class="big-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="report-card">
+        <div class="report-title">
+          Thời gian giao hàng thành công trung bình
+        </div>
+        <div class="report-content">
+          <canvas ref="deliveryChartRef" class="big-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="report-card">
+        <div class="report-title">Tỉ lệ giao hàng thành công</div>
+        <div class="report-content">
+          <canvas ref="successPieRef" class="big-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="report-card">
+        <div class="report-title">Tỉ trọng vận đơn</div>
+        <div class="report-content">
+          <canvas ref="weightPieRef" class="big-chart"></canvas>
         </div>
       </div>
     </div>
@@ -73,33 +85,6 @@ const statusList = [
   { label: "Đang giao hàng", value: 7, cod: "2.400.000đ" },
   { label: "Chờ giao lại", value: 2, cod: "500.000đ" },
   { label: "Đang hoàn hàng", value: 1, cod: "150.000đ" },
-];
-
-const reports = [
-  {
-    title: "Thời gian lấy hàng thành công trung bình",
-    value: 42,
-    unit: "phút",
-    chartRef: "pickupChartRef",
-  },
-  {
-    title: "Thời gian giao hàng thành công trung bình",
-    value: 58,
-    unit: "phút",
-    chartRef: "deliveryChartRef",
-  },
-  {
-    title: "Tỉ lệ giao hàng thành công",
-    value: 93,
-    unit: "%",
-    chartRef: "successPieRef",
-  },
-  {
-    title: "Tỉ trọng vận đơn",
-    value: 135,
-    unit: "kg",
-    chartRef: "weightPieRef",
-  },
 ];
 
 const pickupChartRef = ref(null);
