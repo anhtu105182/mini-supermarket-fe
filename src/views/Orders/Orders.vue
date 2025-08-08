@@ -1,148 +1,463 @@
 <template>
-  <div class="orders-page">
-    <h1 class="orders-title">Danh sách đơn hàng</h1>
-    <div class="orders-table">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="i in 3" :key="i">
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="orders-empty">
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/1048/1048953.png"
-          alt="empty"
-          class="orders-empty-img"
-        />
-        <div class="orders-empty-title">
-          Cửa hàng của bạn chưa có đơn hàng nào
-        </div>
-        <div class="orders-empty-desc">Thêm mới đơn hàng của bạn</div>
-        <button class="orders-add-btn">
-          <i class="fa fa-plus-circle"></i> Thêm đơn hàng
-        </button>
-      </div>
+  <div class="page-container">
+    <div class="page-header">
+      <h1 class="page-title">Đơn hàng</h1>
+      <el-button type="primary" :icon="Plus" @click="createOrder">
+        Tạo đơn hàng
+      </el-button>
     </div>
-    <div class="orders-footer">
-      Tìm hiểu về <a href="#" class="orders-link">đơn hàng</a>
+
+    <el-tabs v-model="activeTab" class="order-tabs">
+      <el-tab-pane label="Tất cả" name="all"></el-tab-pane>
+      <el-tab-pane label="Chờ xử lý" name="pending"></el-tab-pane>
+      <el-tab-pane label="Đang giao" name="shipping"></el-tab-pane>
+      <el-tab-pane label="Hoàn thành" name="completed"></el-tab-pane>
+      <el-tab-pane label="Đã hủy" name="cancelled"></el-tab-pane>
+    </el-tabs>
+
+    <div class="table-container">
+      <div class="filters-bar">
+        <el-input
+          v-model="search"
+          placeholder="Tìm theo mã đơn, tên hoặc SĐT khách..."
+          clearable
+          :prefix-icon="Search"
+        />
+        <el-date-picker
+          v-if="!isMobile"
+          v-model="dateRange"
+          type="daterange"
+          range-separator="-"
+          start-placeholder="Từ ngày"
+          end-placeholder="Đến ngày"
+        />
+      </div>
+
+      <el-table
+        v-if="!isMobile"
+        :data="pagedOrders"
+        v-loading="isLoading"
+        style="width: 100%"
+      >
+        <el-table-column prop="orderCode" label="Mã đơn hàng" width="140" />
+        <el-table-column label="Khách hàng" min-width="180">
+          <template #default="scope">
+            <div class="customer-cell">{{ scope.row.customerName }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="orderDate" label="Ngày tạo" width="160" />
+        <el-table-column label="Tổng tiền" width="150" align="right">
+          <template #default="scope">
+            <span class="total-amount">{{
+              formatCurrency(scope.row.totalAmount)
+            }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="Thanh toán" width="140" align="center">
+          <template #default="scope">
+            <el-tag
+              :type="getPaymentStatusType(scope.row.paymentStatus)"
+              size="small"
+              >{{ scope.row.paymentStatus }}</el-tag
+            >
+          </template>
+        </el-table-column>
+        <el-table-column label="Giao hàng" width="140" align="center">
+          <template #default="scope">
+            <el-tag
+              :type="getFulfillmentStatusType(scope.row.fulfillmentStatus)"
+              effect="light"
+              size="small"
+              >{{ scope.row.fulfillmentStatus }}</el-tag
+            >
+          </template>
+        </el-table-column>
+        <el-table-column label="Thao tác" width="120" align="center">
+          <div class="action-buttons">
+            <el-button size="small" :icon="View" text bg>Xem</el-button>
+          </div>
+        </el-table-column>
+      </el-table>
+
+      <div v-else class="mobile-card-list">
+        <div
+          v-for="item in pagedOrders"
+          :key="item.orderCode"
+          class="mobile-card"
+        >
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-title">{{ item.orderCode }}</span>
+              <span class="card-subtitle">{{ item.customerName }}</span>
+            </div>
+            <span class="total-amount">{{
+              formatCurrency(item.totalAmount)
+            }}</span>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="card-label">Ngày tạo</span>
+              <span class="card-value">{{ item.orderDate }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Thanh toán</span>
+              <span class="card-value"
+                ><el-tag
+                  :type="getPaymentStatusType(item.paymentStatus)"
+                  size="small"
+                  >{{ item.paymentStatus }}</el-tag
+                ></span
+              >
+            </div>
+            <div class="card-row">
+              <span class="card-label">Giao hàng</span>
+              <span class="card-value"
+                ><el-tag
+                  :type="getFulfillmentStatusType(item.fulfillmentStatus)"
+                  effect="light"
+                  size="small"
+                  >{{ item.fulfillmentStatus }}</el-tag
+                ></span
+              >
+            </div>
+          </div>
+          <div class="card-footer">
+            <el-button size="small" :icon="View" text bg
+              >Xem chi tiết</el-button
+            >
+          </div>
+        </div>
+      </div>
+
+      <el-empty
+        v-if="!isLoading && pagedOrders.length === 0"
+        description="Không có đơn hàng nào phù hợp"
+      />
+    </div>
+
+    <div class="pagination-container">
+      <el-pagination
+        v-if="filteredOrders.length > 0"
+        :small="isMobile"
+        background
+        layout="total, prev, pager, next"
+        :total="filteredOrders.length"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+      />
     </div>
   </div>
 </template>
 
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { Search, Plus, View } from "@element-plus/icons-vue";
+
+// --- STATE ---
+const isMobile = ref(false);
+const isLoading = ref(true);
+const search = ref("");
+const activeTab = ref("all");
+const dateRange = ref("");
+const currentPage = ref(1);
+const pageSize = 10;
+const orders = ref([]);
+
+// --- DỮ LIỆU MẪU ---
+const sampleOrders = [
+  {
+    orderCode: "DH1235",
+    customerName: "Phạm Mỹ Duyên",
+    orderDate: "2025-08-08 10:30",
+    totalAmount: 1250000,
+    paymentStatus: "Đã thanh toán",
+    fulfillmentStatus: "Hoàn thành",
+  },
+  {
+    orderCode: "DH1234",
+    customerName: "Trần Văn An",
+    orderDate: "2025-08-07 15:45",
+    totalAmount: 850000,
+    paymentStatus: "Đã thanh toán",
+    fulfillmentStatus: "Đang giao",
+  },
+  {
+    orderCode: "DH1233",
+    customerName: "Nguyễn Thị Bình",
+    orderDate: "2025-08-07 11:20",
+    totalAmount: 320000,
+    paymentStatus: "Chưa thanh toán",
+    fulfillmentStatus: "Chờ xử lý",
+  },
+  {
+    orderCode: "DH1232",
+    customerName: "Lê Hoàng Cường",
+    orderDate: "2025-08-06 09:00",
+    totalAmount: 2100000,
+    paymentStatus: "Đã thanh toán",
+    fulfillmentStatus: "Hoàn thành",
+  },
+  {
+    orderCode: "DH1231",
+    customerName: "Võ Thành Danh",
+    orderDate: "2025-08-05 18:00",
+    totalAmount: 50000,
+    paymentStatus: "Đã thanh toán",
+    fulfillmentStatus: "Đã hủy",
+  },
+];
+
+// --- LOGIC ---
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+
+const formatCurrency = (value) => value.toLocaleString("vi-VN") + "đ";
+
+const getPaymentStatusType = (status) =>
+  status === "Đã thanh toán" ? "success" : "warning";
+const getFulfillmentStatusType = (status) => {
+  if (status === "Hoàn thành") return "success";
+  if (status === "Đang giao") return "primary";
+  if (status === "Chờ xử lý") return "warning";
+  if (status === "Đã hủy") return "danger";
+  return "info";
+};
+
+const filteredOrders = computed(() => {
+  return orders.value.filter((item) => {
+    const searchMatch = search.value
+      ? item.orderCode.toLowerCase().includes(search.value.toLowerCase()) ||
+        item.customerName.toLowerCase().includes(search.value.toLowerCase())
+      : true;
+
+    const tabMatch =
+      activeTab.value !== "all"
+        ? item.fulfillmentStatus.toLowerCase().replace(" ", "") ===
+          activeTab.value
+        : true;
+
+    return searchMatch && tabMatch;
+  });
+});
+
+const pagedOrders = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredOrders.value.slice(start, start + pageSize);
+});
+
+watch(activeTab, () => {
+  currentPage.value = 1;
+});
+
+const createOrder = () => {};
+
+// --- LIFECYCLE HOOKS ---
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  // Giả lập tải dữ liệu từ API
+  setTimeout(() => {
+    orders.value = sampleOrders;
+    isLoading.value = false;
+  }, 1000);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", checkScreenSize);
+});
+</script>
+
 <style scoped>
-.orders-page {
-  padding: 24px 16px 0 16px;
-  background: #f7f7f9;
+/* @import './responsive-style.css'; Sử dụng file CSS chung */
+
+.total-amount {
+  font-weight: 600;
+  color: #1f2937;
+}
+.customer-cell {
+  font-weight: 500;
+}
+.filters-bar {
+  justify-content: space-between;
+}
+.order-tabs {
+  margin-bottom: 1px; /* Cho tab nằm sát với table-container */
+}
+.order-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
+  padding: 0 20px;
+  background-color: #fff;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+}
+
+/* Ghi đè style của table-container để nó khớp với tab */
+.table-container {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Responsive cho Tabs */
+@media (max-width: 767px) {
+  .order-tabs :deep(.el-tabs__header) {
+    padding: 0;
+  }
+  .order-tabs :deep(.el-tabs__nav) {
+    width: 100%;
+    display: flex;
+  }
+  .order-tabs :deep(.el-tabs__item) {
+    flex: 1;
+    text-align: center;
+    padding: 0 5px; /* Giảm padding cho vừa màn hình mobile */
+  }
+}
+
+/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+.page-container {
+  padding: 16px;
+  background-color: #f9fafb;
+  font-family: "Inter", sans-serif;
   min-height: 100vh;
 }
-.orders-title {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 18px;
-  color: #222;
-  margin-top: 0px;
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.orders-table {
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ----- CONTAINERS & BARS ----- */
+.table-container {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* ----- MOBILE CARD STYLES ----- */
+.mobile-card-list {
+  padding: 16px;
+}
+.mobile-card {
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  padding: 24px 0 48px 0;
-  min-height: 500px;
-  position: relative;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin-bottom: 32px;
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  font-weight: 600;
 }
-th,
-td {
-  padding: 8px 0;
+.card-title {
+  color: #111827;
 }
-.skeleton-header {
-  height: 18px;
-  width: 120px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.5;
-}
-.skeleton-row {
-  height: 16px;
-  width: 100px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.3;
-}
-.orders-empty {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 120px;
+.card-body {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 12px;
 }
-.orders-empty-img {
-  width: 72px;
-  margin-bottom: 16px;
-  opacity: 0.95;
-}
-.orders-empty-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: #222;
-  text-align: center;
-}
-.orders-empty-desc {
-  color: #888;
-  margin-bottom: 18px;
-  text-align: center;
-}
-.orders-add-btn {
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
+.card-row {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
+  font-size: 0.9rem;
 }
-.orders-add-btn:hover {
-  background: #1976d2;
+.card-label {
+  color: #6b7280;
 }
-.orders-footer {
+.card-value {
+  color: #111827;
+  font-weight: 500;
   text-align: right;
-  margin-top: 18px;
-  color: #888;
-  font-size: 0.97rem;
-  display: flex;
-  justify-content: center;
 }
-.orders-link {
-  color: #2196f3;
-  text-decoration: underline;
+.card-footer {
+  padding: 8px 16px;
+  background-color: #f9fafb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ----- ELEMENT PLUS CUSTOMIZATION ----- */
+.page-container :deep(.el-button) {
+  border-radius: 6px;
+  font-weight: 500;
+}
+.page-container :deep(.el-input__wrapper) {
+  border-radius: 6px;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db;
+}
+
+/* ----- DESKTOP OVERRIDES ----- */
+@media (min-width: 768px) {
+  .page-container {
+    padding: 24px 32px;
+  }
+  .page-title {
+    font-size: 1.75rem;
+  }
+  .filters-bar {
+    padding: 16px 20px;
+  }
+  .pagination-container {
+    justify-content: flex-end;
+  }
+  .page-container :deep(.el-button--primary) {
+    background-color: #2563eb;
+    border-color: #2563eb;
+  }
+  .page-container :deep(.el-input) {
+    max-width: 400px;
+  }
+  .page-container :deep(.el-table th) {
+    background-color: #f9fafb !important;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .page-container :deep(.el-table td.el-table__cell) {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 14px 0;
+  }
+  .page-container :deep(.el-table .el-table__row:hover > td) {
+    background-color: #f9fafb !important;
+  }
+  .page-container
+    :deep(
+      .el-pagination.is-background .el-pager li:not(.is-disabled).is-active
+    ) {
+    background-color: #2563eb;
+  }
 }
 </style>

@@ -38,6 +38,8 @@ import Customer_groups from "@/views/Users/Customer_groups.vue"; // nhóm khách
 import Reports_list from "@/views/Reports/Reports_list.vue"; // danh sách báo cáo
 import Reports from "@/views/Reports/Reports.vue"; // báo cáo tổng quan
 
+// import trang sổ quỹ fundbook
+import Fundbook from "@/views/Cashbook/Fundbook.vue";
 const routes = [
   {
     path: "/",
@@ -153,6 +155,12 @@ const routes = [
         name: "Reports-Shipments",
         component: Reports_Shipments,
       },
+      {
+        path: "Fundbook",
+        name: "Fundbook",
+        component: Fundbook,
+      },
+
       // Thêm các route con khác nếu cần
     ],
   },

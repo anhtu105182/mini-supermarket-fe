@@ -155,7 +155,7 @@ export default {
         ],
       },
       { to: "/discounts", icon: "fa-solid fa-tags", label: "Khuyến mại" },
-      { to: "/fund", icon: "fa-solid fa-wallet", label: "Sổ quỹ" },
+      { to: "/Fundbook", icon: "fa-solid fa-wallet", label: "Sổ quỹ" },
       {
         icon: "fa-solid fa-chart-line",
         label: "Báo cáo",
@@ -422,9 +422,9 @@ a.active .submenu-arrow i.fa-chevron-down {
 .sidebar.collapsed .submenu-arrow {
   display: none !important;
 }
-.sidebar.collapsed .sidebar-menu {
-  /* padding: 12px 8px; */
-}
+/* .sidebar.collapsed .sidebar-menu {
+  padding: 12px 8px;
+} */
 .sidebar.collapsed a {
   justify-content: center;
 }

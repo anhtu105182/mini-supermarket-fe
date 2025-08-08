@@ -11,65 +11,64 @@
     </div>
     <div class="filter-card">
       <el-date-picker
-        class="filter-item"
         v-model="filters.dateRange"
         type="daterange"
         range-separator="-"
         start-placeholder="Từ ngày"
         end-placeholder="Đến ngày"
       />
-      <el-select
-        class="filter-item"
-        v-model="filters.type"
-        placeholder="Loại giao dịch"
-        clearable
-      >
+      <el-select v-model="filters.type" placeholder="Loại giao dịch" clearable>
         <el-option label="Tất cả" value="all" />
         <el-option label="Phiếu thu" value="thu" />
         <el-option label="Phiếu chi" value="chi" />
       </el-select>
-      <el-select
-        class="filter-item"
-        v-model="filters.employee"
-        placeholder="Nhân viên"
-        clearable
-      >
+      <el-select v-model="filters.employee" placeholder="Nhân viên" clearable>
         <el-option label="Tất cả" value="all" />
         <el-option label="Nhân viên A" value="Nhân viên A" />
-        <el-option label="Nhân viên B" value="Nhân viên B" />
         <el-option label="Admin" value="Admin" />
       </el-select>
-      <el-button
-        class="filter-item"
-        type="primary"
-        :icon="Search"
-        @click="handleSearch"
+      <el-button type="primary" :icon="Search" @click="handleSearch"
         >Tìm kiếm</el-button
       >
     </div>
 
-    <div class="stats-grid"></div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-title">Tồn đầu kỳ</div>
+        <div class="stat-value">
+          {{ formatCurrency(summary.openingBalance) }}
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Tổng thu trong kỳ</div>
+        <div class="stat-value income">
+          {{ formatCurrency(summary.totalIncome) }}
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Tổng chi trong kỳ</div>
+        <div class="stat-value expense">
+          {{ formatCurrency(summary.totalExpense) }}
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Tồn cuối kỳ</div>
+        <div class="stat-value closing-balance">
+          {{ formatCurrency(summary.closingBalance) }}
+        </div>
+      </div>
+    </div>
 
     <div class="table-container">
       <el-table
-        v-if="!isMobile"
         :data="pagedTransactions"
         v-loading="isLoading"
         style="width: 100%"
       >
-        <el-table-column label="Giao dịch" min-width="280">
-          <template #default="scope">
-            <div class="transaction-main-info">
-              <div class="transaction-description">
-                {{ scope.row.description }}
-              </div>
-              <div class="transaction-sub-info">
-                <span>{{ scope.row.datetime }}</span> |
-                <span>Mã: {{ scope.row.code }}</span>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
+        <el-table-column type="index" label="STT" width="60" />
+        <el-table-column prop="datetime" label="Thời gian" width="160" />
+        <el-table-column prop="code" label="Mã phiếu" width="120" />
+        <el-table-column prop="description" label="Diễn giải" min-width="250" />
         <el-table-column label="Loại" width="120" align="center">
           <template #default="scope">
             <el-tag
@@ -81,28 +80,17 @@
             >
           </template>
         </el-table-column>
-        <el-table-column label="Phương thức / Người tạo" min-width="180">
-          <template #default="scope">
-            <div class="transaction-meta-info">
-              <div class="payment-method">{{ scope.row.paymentMethod }}</div>
-              <div class="employee-name">{{ scope.row.employee }}</div>
-            </div>
-          </template>
-        </el-table-column>
+        <el-table-column prop="paymentMethod" label="Phương thức" width="140" />
         <el-table-column label="Số tiền" width="150" align="right">
           <template #default="scope">
-            <span
-              :class="[
-                'amount',
-                scope.row.type === 'thu' ? 'income' : 'expense',
-              ]"
-            >
+            <span :class="scope.row.type === 'thu' ? 'income' : 'expense'">
               {{ scope.row.type === "thu" ? "+" : "-" }}
               {{ formatCurrency(scope.row.amount) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="Thao tác" width="100" align="center">
+        <el-table-column prop="employee" label="Người thực hiện" width="150" />
+        <el-table-column label="Thao tác" width="120" align="center">
           <div class="action-buttons">
             <el-button
               size="small"
@@ -120,10 +108,30 @@
             />
           </div>
         </el-table-column>
-        <template #append> </template>
-      </el-table>
 
-      <div v-else class="mobile-card-list"></div>
+        <template #append>
+          <div class="table-footer-summary">
+            <div class="summary-item">
+              <span>Tổng thu:</span>
+              <strong class="income">{{
+                formatCurrency(summary.totalIncome)
+              }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>Tổng chi:</span>
+              <strong class="expense">{{
+                formatCurrency(summary.totalExpense)
+              }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>Chênh lệch:</span>
+              <strong>{{
+                formatCurrency(summary.totalIncome - summary.totalExpense)
+              }}</strong>
+            </div>
+          </div>
+        </template>
+      </el-table>
 
       <el-empty
         v-if="!isLoading && pagedTransactions.length === 0"
@@ -131,21 +139,72 @@
       />
     </div>
 
-    <div class="pagination-container"></div>
+    <div class="pagination-container">
+      <el-pagination
+        v-if="filteredTransactions.length > 0"
+        :small="isMobile"
+        background
+        layout="total, prev, pager, next"
+        :total="filteredTransactions.length"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+      />
+    </div>
 
     <el-drawer
       v-model="drawerVisible"
       :title="isEditMode ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch mới'"
       direction="rtl"
-      :size="isMobile ? '95%' : '450px'"
+      size="450px"
     >
+      <el-form :model="form" label-position="top" ref="formRef">
+        <el-form-item label="Loại giao dịch" prop="type">
+          <el-radio-group v-model="form.type">
+            <el-radio-button label="thu">Phiếu thu</el-radio-button>
+            <el-radio-button label="chi">Phiếu chi</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="Số tiền" prop="amount">
+          <el-input
+            v-model.number="form.amount"
+            type="number"
+            placeholder="Nhập số tiền"
+          />
+        </el-form-item>
+        <el-form-item label="Diễn giải" prop="description">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            placeholder="VD: Thu tiền hàng, Chi mua văn phòng phẩm..."
+          />
+        </el-form-item>
+        <el-form-item label="Phương thức thanh toán" prop="paymentMethod">
+          <el-select
+            v-model="form.paymentMethod"
+            placeholder="Chọn phương thức"
+          >
+            <el-option label="Tiền mặt" value="Tiền mặt" />
+            <el-option label="Chuyển khoản" value="Chuyển khoản" />
+            <el-option label="Thẻ" value="Thẻ" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Nhân viên thực hiện" prop="employee">
+          <el-select v-model="form.employee" placeholder="Chọn nhân viên">
+            <el-option label="Nhân viên A" value="Nhân viên A" />
+            <el-option label="Admin" value="Admin" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="drawerVisible = false">Hủy</el-button>
+        <el-button type="primary" @click="handleSave">Lưu</el-button>
+      </template>
     </el-drawer>
   </div>
 </template>
 
 <script setup>
-// Toàn bộ phần script không thay đổi, bạn có thể giữ nguyên
-import { ref, computed, onMounted, onBeforeUnmount, reactive } from "vue";
+import { ref, computed, onMounted, reactive } from "vue";
 import { Search, Plus, Download, Edit, Delete } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 
@@ -157,12 +216,8 @@ const pageSize = 10;
 const drawerVisible = ref(false);
 const isEditMode = ref(false);
 
-const checkScreenSize = () => {
-  isMobile.value = window.innerWidth < 768;
-};
-
 const filters = reactive({
-  dateRange: [new Date(), new Date()],
+  dateRange: [new Date(), new Date()], // Mặc định hôm nay
   type: "all",
   employee: "all",
 });
@@ -207,96 +262,6 @@ const sampleTransactions = [
     amount: 850000,
     employee: "Nhân viên A",
   },
-  {
-    id: 4,
-    datetime: "2025-08-07 14:00",
-    code: "PC002",
-    description: "Chi trả tiền điện",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 1200000,
-    employee: "Admin",
-  },
-  {
-    id: 5,
-    datetime: "2025-08-06 18:00",
-    code: "PT003",
-    description: "Thu tiền đơn hàng DH1233",
-    type: "thu",
-    paymentMethod: "Thẻ",
-    amount: 320000,
-    employee: "Nhân viên B",
-  },
-  {
-    id: 6,
-    datetime: "2025-08-06 11:20",
-    code: "PC003",
-    description: "Chi nhập hàng NCC A",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 5500000,
-    employee: "Admin",
-  },
-  {
-    id: 7,
-    datetime: "2025-08-05 19:30",
-    code: "PT004",
-    description: "Thu tiền đơn hàng DH1232",
-    type: "thu",
-    paymentMethod: "Tiền mặt",
-    amount: 2100000,
-    employee: "Nhân viên B",
-  },
-  {
-    id: 8,
-    datetime: "2025-08-05 12:00",
-    code: "PC004",
-    description: "Chi trả lương nhân viên",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 10000000,
-    employee: "Admin",
-  },
-  {
-    id: 9,
-    datetime: "2025-08-04 17:00",
-    code: "PT005",
-    description: "Thu tiền dịch vụ spa",
-    type: "thu",
-    paymentMethod: "Thẻ",
-    amount: 750000,
-    employee: "Nhân viên A",
-  },
-  {
-    id: 10,
-    datetime: "2025-08-04 10:10",
-    code: "PC005",
-    description: "Chi mua dụng cụ",
-    type: "chi",
-    paymentMethod: "Tiền mặt",
-    amount: 680000,
-    employee: "Nhân viên B",
-  },
-  {
-    id: 11,
-    datetime: "2025-08-03 20:00",
-    code: "PT006",
-    description: "Thu tiền đơn hàng DH1231",
-    type: "thu",
-    paymentMethod: "Chuyển khoản",
-    amount: 50000,
-    employee: "Nhân viên A",
-  },
-  {
-    id: 12,
-    datetime: "2025-08-03 08:30",
-    code: "PC006",
-    description: "Chi tiền marketing",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 2000000,
-    employee: "Admin",
-  },
 ];
 
 const formatCurrency = (value) => (value || 0).toLocaleString("vi-VN") + "đ";
@@ -306,6 +271,7 @@ const filteredTransactions = computed(() => {
     const typeMatch = filters.type === "all" || t.type === filters.type;
     const employeeMatch =
       filters.employee === "all" || t.employee === filters.employee;
+    // Logic lọc theo ngày sẽ phức tạp hơn, tạm thời bỏ qua để demo
     return typeMatch && employeeMatch;
   });
 });
@@ -316,7 +282,7 @@ const pagedTransactions = computed(() => {
 });
 
 const summary = computed(() => {
-  const openingBalance = 5000000;
+  const openingBalance = 5000000; // Giả sử tồn đầu kỳ
   const totalIncome = filteredTransactions.value
     .filter((t) => t.type === "thu")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -330,6 +296,7 @@ const summary = computed(() => {
 const handleSearch = () => {
   ElMessage.info("Đã áp dụng bộ lọc!");
 };
+
 const openDrawer = (transaction = null) => {
   if (transaction) {
     isEditMode.value = true;
@@ -347,7 +314,9 @@ const openDrawer = (transaction = null) => {
   }
   drawerVisible.value = true;
 };
+
 const handleSave = () => {
+  // Thêm logic validation ở đây
   if (isEditMode.value) {
     const index = transactions.value.findIndex((t) => t.id === form.id);
     if (index !== -1) transactions.value[index] = { ...form };
@@ -362,6 +331,7 @@ const handleSave = () => {
   ElMessage.success("Lưu giao dịch thành công!");
   drawerVisible.value = false;
 };
+
 const handleDelete = (transaction) => {
   ElMessageBox.confirm(
     `Bạn có chắc muốn xóa phiếu "${transaction.code}" không?`,
@@ -382,22 +352,15 @@ const handleDelete = (transaction) => {
 };
 
 onMounted(() => {
-  checkScreenSize();
-  window.addEventListener("resize", checkScreenSize);
   setTimeout(() => {
     transactions.value = sampleTransactions;
     isLoading.value = false;
   }, 500);
 });
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", checkScreenSize);
-});
 </script>
 
 <style scoped>
-/* @import './responsive-style.css'; */
-
-/* === SỬA ĐỔI: CSS cho bộ lọc và các cột trong bảng === */
+/* @import "./responsive-style.css"; */
 .filter-card {
   padding: 20px;
   background: #fff;
@@ -405,40 +368,9 @@ onBeforeUnmount(() => {
   border: 1px solid #e5e7eb;
   margin-bottom: 24px;
   display: flex;
-  flex-wrap: wrap; /* Tự động xuống dòng trên màn hình hẹp */
+  flex-wrap: wrap;
   gap: 16px;
 }
-.filter-item {
-  flex-grow: 1; /* Cho các item co giãn */
-}
-.transaction-main-info {
-  font-weight: 500;
-}
-.transaction-description {
-  color: #111827;
-}
-.transaction-sub-info {
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-weight: 400;
-  margin-top: 2px;
-}
-.transaction-meta-info {
-  font-size: 0.9rem;
-}
-.payment-method {
-  font-weight: 500;
-  color: #374151;
-}
-.employee-name {
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-.amount {
-  font-weight: 600;
-}
-/* ============================================== */
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
