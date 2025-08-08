@@ -1,473 +1,551 @@
 <template>
-  <div class="orders-page">
-    <div class="orders-header">
-      <h1 class="orders-title">Danh sách đơn đặt hàng nhập</h1>
-      <!-- <div class="export-file" @click="showExportModal = true">Xuất file</div> -->
-    </div>
-    <div class="orders-table">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="i in 3" :key="i">
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-          </tr>
-        </tbody>
-      </table>
-      <EmptyState
-        icon="https://cdn-icons-png.flaticon.com/512/1048/1048953.png"
-        title="Cửa hàng của bạn chưa có đơn đặt hàng nhập nào"
-        description="Thêm mới hoặc nhập danh sách đơn đặt hàng nhập"
-      >
-        <template #actions>
-          <button class="orders-add-btn-import" @click="showExportModal = true">
-            <i class="fa-solid fa-upload"></i>Nhập file
-          </button>
-          <button class="orders-add-btn">
-            <i class="fa fa-plus-circle"></i> Tạo đơn đặt hàng
-          </button>
-        </template>
-      </EmptyState>
-    </div>
-    <div class="orders-footer">
-      Tìm hiểu về <a href="#" class="orders-link">vận đơn </a>
-    </div>
-    <!-- Modal Nhập file -->
-    <div
-      v-if="showExportModal"
-      class="modal-overlay"
-      @click.self="showExportModal = false"
-    >
-      <div class="modal-import">
-        <div class="modal-header">
-          <span>Nhập file danh sách đơn đặt hàng nhập</span>
-          <button class="modal-close" @click="showExportModal = false">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-row">
-            <div class="modal-field">
-              <label>Chi nhánh tạo đơn</label>
-              <select v-model="selectedBranch">
-                <option value="">Chọn chi nhánh</option>
-                <option v-for="b in branches" :key="b" :value="b">
-                  {{ b }}
-                </option>
-              </select>
-            </div>
-            <div class="modal-field">
-              <label>Nhà cung cấp</label>
-              <select v-model="selectedSupplier">
-                <option value="">Chọn nhà cung cấp</option>
-                <option v-for="s in suppliers" :key="s" :value="s">
-                  {{ s }}
-                </option>
-              </select>
-            </div>
-          </div>
-          <div
-            class="modal-dropzone"
-            @dragover.prevent
-            @drop.prevent="handleDrop"
-          >
-            <div class="modal-dropzone-content">
-              <i
-                class="fa fa-cloud-upload"
-                style="font-size: 2.2rem; color: #2196f3"
-              ></i>
-              <div>
-                Kéo thả file vào đây hoặc
-                <label class="modal-upload-label">
-                  <input
-                    type="file"
-                    style="display: none"
-                    @change="handleFileChange"
-                  />
-                  <span class="modal-upload-link">tải lên từ thiết bị</span>
-                </label>
-              </div>
-              <div class="modal-dropzone-desc">
-                (Tối đa 3MB, định dạng .xls hoặc .xlsx)
-              </div>
-              <div v-if="fileName" class="modal-file-name">
-                <i class="fa fa-file-excel" style="color: #43a047"></i>
-                {{ fileName }}
-              </div>
-            </div>
-          </div>
-          <div class="modal-sample-link">
-            <a href="#" @click.prevent="downloadSample">
-              <i class="fa fa-download"></i> Tải file dữ liệu mẫu
-            </a>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn cancel" @click="showExportModal = false">
-            Hủy
-          </button>
-          <button
-            class="modal-btn import"
-            :disabled="!fileName"
-            @click="importFile"
-          >
-            Nhập file
-          </button>
-        </div>
+  <div class="page-container">
+    <div class="page-header">
+      <h1 class="page-title">Đơn đặt hàng nhập</h1>
+      <div class="action-buttons-group">
+        <el-button :icon="Upload" @click="importDialogVisible = true"
+          >Nhập file</el-button
+        >
+        <el-button type="primary" :icon="Plus" @click="createPurchaseOrder">
+          Tạo đơn đặt hàng
+        </el-button>
       </div>
     </div>
+
+    <el-tabs v-model="activeTab" class="order-tabs">
+      <el-tab-pane label="Tất cả" name="all"></el-tab-pane>
+      <el-tab-pane label="Nháp" name="draft"></el-tab-pane>
+      <el-tab-pane label="Đã đặt hàng" name="ordered"></el-tab-pane>
+      <el-tab-pane label="Đã nhập kho" name="received"></el-tab-pane>
+      <el-tab-pane label="Đã hủy" name="cancelled"></el-tab-pane>
+    </el-tabs>
+
+    <div class="table-container">
+      <div class="filters-bar">
+        <el-input
+          v-model="search"
+          placeholder="Tìm theo mã đơn, nhà cung cấp..."
+          clearable
+          :prefix-icon="Search"
+        />
+        <el-select
+          v-if="!isMobile"
+          v-model="supplierFilter"
+          placeholder="Nhà cung cấp"
+          clearable
+        >
+          <el-option label="Nhà cung cấp A" value="Nhà cung cấp A"></el-option>
+          <el-option label="Nhà cung cấp B" value="Nhà cung cấp B"></el-option>
+        </el-select>
+      </div>
+
+      <el-table
+        v-if="!isMobile"
+        :data="pagedPOs"
+        v-loading="isLoading"
+        style="width: 100%"
+      >
+        <el-table-column prop="poCode" label="Mã đơn nhập" width="160" />
+        <el-table-column prop="supplier" label="Nhà cung cấp" min-width="200" />
+        <el-table-column prop="branch" label="Chi nhánh nhận" width="160" />
+        <el-table-column prop="createdDate" label="Ngày tạo" width="160" />
+        <el-table-column label="Tổng tiền" width="150" align="right">
+          <template #default="scope"
+            ><span class="total-amount">{{
+              formatCurrency(scope.row.totalCost)
+            }}</span></template
+          >
+        </el-table-column>
+        <el-table-column label="Trạng thái" width="150" align="center">
+          <template #default="scope"
+            ><el-tag
+              :type="getStatusType(scope.row.status)"
+              effect="light"
+              size="small"
+              >{{ scope.row.status }}</el-tag
+            ></template
+          >
+        </el-table-column>
+        <el-table-column label="Thao tác" width="120" align="center">
+          <div class="action-buttons">
+            <el-button size="small" :icon="View" text bg>Xem</el-button>
+          </div>
+        </el-table-column>
+      </el-table>
+
+      <div v-else class="mobile-card-list">
+        <div v-for="item in pagedPOs" :key="item.poCode" class="mobile-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-title">{{ item.poCode }}</span>
+              <span class="card-subtitle">{{ item.supplier }}</span>
+            </div>
+            <el-tag
+              :type="getStatusType(item.status)"
+              effect="light"
+              size="small"
+              >{{ item.status }}</el-tag
+            >
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="card-label">Chi nhánh</span>
+              <span class="card-value">{{ item.branch }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Ngày tạo</span>
+              <span class="card-value">{{ item.createdDate }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Tổng tiền</span>
+              <span class="card-value total-amount">{{
+                formatCurrency(item.totalCost)
+              }}</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <el-button size="small" :icon="View" text bg
+              >Xem chi tiết</el-button
+            >
+          </div>
+        </div>
+      </div>
+
+      <el-empty
+        v-if="!isLoading && pagedPOs.length === 0"
+        description="Chưa có đơn đặt hàng nhập nào"
+      />
+    </div>
+
+    <div class="pagination-container">
+      <el-pagination
+        v-if="filteredPOs.length > 0"
+        :small="isMobile"
+        background
+        layout="total, prev, pager, next"
+        :total="filteredPOs.length"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+      />
+    </div>
+
+    <el-dialog
+      v-model="importDialogVisible"
+      title="Nhập file đơn đặt hàng"
+      width="600px"
+      align-center
+    >
+      <el-form :model="importForm" label-position="top">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="Chi nhánh tạo đơn">
+              <el-select
+                v-model="importForm.branch"
+                placeholder="Chọn chi nhánh"
+                style="width: 100%"
+              >
+                <el-option
+                  label="Chi nhánh trung tâm"
+                  value="trungtam"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="Nhà cung cấp">
+              <el-select
+                v-model="importForm.supplier"
+                placeholder="Chọn nhà cung cấp"
+                style="width: 100%"
+              >
+                <el-option label="Nhà cung cấp A" value="ncc_a"></el-option>
+                <el-option label="Nhà cung cấp B" value="ncc_b"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <el-upload
+        ref="uploadRef"
+        class="import-uploader"
+        drag
+        action="#"
+        :auto-upload="false"
+        :limit="1"
+        :on-exceed="handleExceed"
+        :on-change="handleFileChange"
+        accept=".xlsx, .csv"
+      >
+        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <div class="el-upload__text">
+          Kéo thả file vào đây hoặc <em>nhấn để chọn file</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            Chỉ chấp nhận file .xlsx, .csv.
+            <el-button type="primary" link @click.stop="downloadTemplate"
+              >Tải file mẫu</el-button
+            >
+          </div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">Hủy</el-button>
+        <el-button
+          type="primary"
+          @click="handleImport"
+          :disabled="!selectedFile"
+          >Bắt đầu nhập</el-button
+        >
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import EmptyState from "@/components/EmptyState.vue";
-import { ref } from "vue";
-const showExportModal = ref(false);
-const selectedBranch = ref("");
-const selectedSupplier = ref("");
-const fileName = ref("");
-const branches = ["Chi nhánh 1", "Chi nhánh 2"];
-const suppliers = ["Nhà cung cấp A", "Nhà cung cấp B"];
+import {
+  ref,
+  reactive,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+} from "vue";
+import {
+  Search,
+  Plus,
+  View,
+  Upload,
+  Download,
+  UploadFilled,
+} from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 
-function handleFileChange(e) {
-  const file = e.target.files[0];
-  if (file) fileName.value = file.name;
-}
-function handleDrop(e) {
-  const file = e.dataTransfer.files[0];
-  if (file) fileName.value = file.name;
-}
-function downloadSample() {
-  // Tải file mẫu, có thể thay bằng đường dẫn thực tế
-  window.open("/sample.xlsx", "_blank");
-}
-function importFile() {
-  // Xử lý nhập file ở đây
-  showExportModal.value = false;
-  fileName.value = "";
-}
+const isMobile = ref(false);
+const isLoading = ref(true);
+const search = ref("");
+const activeTab = ref("all");
+const supplierFilter = ref("");
+const currentPage = ref(1);
+const pageSize = 10;
+const purchaseOrders = ref([]);
+const importDialogVisible = ref(false);
+const selectedFile = ref(null);
+const uploadRef = ref();
+const importForm = reactive({ branch: "", supplier: "" });
+
+const samplePOs = [
+  {
+    poCode: "PO20250808-01",
+    supplier: "Nhà cung cấp A",
+    branch: "Chi nhánh trung tâm",
+    createdDate: "2025-08-08",
+    totalCost: 5500000,
+    status: "Đã nhập kho",
+  },
+  {
+    poCode: "PO20250807-03",
+    supplier: "Nhà cung cấp B",
+    branch: "Chi nhánh trung tâm",
+    createdDate: "2025-08-07",
+    totalCost: 12000000,
+    status: "Đã đặt hàng",
+  },
+  {
+    poCode: "PO20250807-02",
+    supplier: "Nhà cung cấp A",
+    branch: "Chi nhánh trung tâm",
+    createdDate: "2025-08-07",
+    totalCost: 3200000,
+    status: "Nháp",
+  },
+  {
+    poCode: "PO20250806-01",
+    supplier: "Nhà cung cấp B",
+    branch: "Chi nhánh trung tâm",
+    createdDate: "2025-08-06",
+    totalCost: 800000,
+    status: "Đã hủy",
+  },
+];
+
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+const formatCurrency = (value) => value.toLocaleString("vi-VN") + "đ";
+
+const getStatusType = (status) => {
+  if (status === "Đã nhập kho") return "success";
+  if (status === "Đã đặt hàng") return "primary";
+  if (status === "Nháp") return "warning";
+  if (status === "Đã hủy") return "danger";
+  return "info";
+};
+
+const filteredPOs = computed(() => {
+  return purchaseOrders.value.filter((item) => {
+    const searchMatch = search.value
+      ? item.poCode.toLowerCase().includes(search.value.toLowerCase()) ||
+        item.supplier.toLowerCase().includes(search.value.toLowerCase())
+      : true;
+    const supplierMatch = supplierFilter.value
+      ? item.supplier === supplierFilter.value
+      : true;
+    const tabMatch =
+      activeTab.value !== "all"
+        ? item.status.toLowerCase().replace(/ /g, "") === activeTab.value
+        : true;
+    return searchMatch && supplierMatch && tabMatch;
+  });
+});
+
+const pagedPOs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredPOs.value.slice(start, start + pageSize);
+});
+
+const createPurchaseOrder = () => {};
+const handleFileChange = (file) => {
+  selectedFile.value = file;
+};
+const handleExceed = (files) => {
+  uploadRef.value.clearFiles();
+  const file = files[0];
+  uploadRef.value.handleStart(file);
+  selectedFile.value = file;
+};
+const downloadTemplate = () => {
+  ElMessage.success("Đang tải file mẫu...");
+};
+const handleImport = () => {
+  console.log("Bắt đầu nhập file:", selectedFile.value.name);
+  ElMessage.info("Đang xử lý nhập file...");
+  importDialogVisible.value = false;
+  uploadRef.value.clearFiles();
+  selectedFile.value = null;
+};
+watch([search, activeTab, supplierFilter], () => {
+  currentPage.value = 1;
+});
+
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  setTimeout(() => {
+    purchaseOrders.value = samplePOs;
+    isLoading.value = false;
+  }, 500);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", checkScreenSize);
+});
 </script>
 
 <style scoped>
-.orders-page {
-  padding: 24px 16px 0 16px;
-  background: #f7f7f9;
+/* @import './responsive-style.css'; */
+.total-amount {
+  font-weight: 600;
+}
+.filters-bar {
+  justify-content: space-between;
+}
+.order-tabs {
+  margin-bottom: 1px;
+}
+.order-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
+  padding: 0 20px;
+  background-color: #fff;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+}
+.table-container {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.import-uploader {
+  margin-top: 20px;
+}
+.import-uploader :deep(.el-upload-dragger) {
+  padding: 30px 20px;
+}
+.el-upload__tip {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.el-upload__tip .el-button {
+  margin-left: 5px;
+}
+
+@media (max-width: 767px) {
+  .order-tabs :deep(.el-tabs__header) {
+    padding: 0;
+  }
+  .order-tabs :deep(.el-tabs__nav) {
+    width: 100%;
+    display: flex;
+  }
+  .order-tabs :deep(.el-tabs__item) {
+    flex: 1;
+    text-align: center;
+    padding: 0 5px;
+  }
+}
+/* .action-buttons-group {
+  width: 100%;
+  justify-content: space-between;
+} */
+
+/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+.page-container {
+  padding: 16px;
+  background-color: #f9fafb;
+  font-family: "Inter", sans-serif;
   min-height: 100vh;
 }
-.orders-header {
+.page-header {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
 }
-.export-file {
-  background: #2196f3;
-  color: #fff;
-  padding: 8px 16px;
-  margin-right: 30px;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
 }
-.export-file:hover {
-  background: #1976d2;
+
+/* ----- CONTAINERS & BARS ----- */
+.table-container {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
 }
-.orders-title {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 18px;
-  color: #222;
-  margin-top: 0px;
-}
-.orders-table {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  padding: 24px 0 48px 0;
-  min-height: 500px;
-  position: relative;
-}
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin-bottom: 32px;
-}
-th,
-td {
-  padding: 8px 0;
-}
-.skeleton-header {
-  height: 18px;
-  width: 120px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.5;
-}
-.skeleton-row {
-  height: 16px;
-  width: 100px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.3;
-}
-.orders-empty {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 120px;
+.filters-bar {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+.action-buttons {
+  display: flex;
+  gap: 8px;
   justify-content: center;
 }
-.orders-empty-img {
-  width: 72px;
+
+/* ----- MOBILE CARD STYLES ----- */
+.mobile-card-list {
+  padding: 16px;
+}
+.mobile-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   margin-bottom: 16px;
-  opacity: 0.95;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
-.orders-empty-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: #222;
-  text-align: center;
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  font-weight: 600;
 }
-.orders-empty-desc {
-  color: #888;
-  margin-bottom: 18px;
-  text-align: center;
+.card-title {
+  color: #111827;
 }
-.orders-empty-actions {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  gap: 16px;
-}
-.orders-add-btn {
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
-}
-.orders-add-btn:hover {
-  background: #1976d2;
-}
-.orders-add-btn-import {
-  background: #fbfdff;
-  color: #2196f3;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
-  border: 1px solid #2196f3;
-}
-.orders-footer {
-  text-align: right;
-  margin-top: 18px;
-  color: #888;
-  font-size: 0.97rem;
-  display: flex;
-  justify-content: center;
-}
-.orders-link {
-  color: #2196f3;
-  text-decoration: underline;
-}
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  z-index: 9999;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.modal-import {
-  background: #fff;
-  border-radius: 10px;
-  min-width: 520px;
-  max-width: 98vw;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.13);
-  padding: 0;
-  animation: modalIn 0.18s;
+.card-body {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
-@keyframes modalIn {
-  from {
-    transform: translateY(-30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-.modal-header {
+.card-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 28px 10px 28px;
-  font-size: 1.18rem;
-  font-weight: 600;
-  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.9rem;
 }
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #888;
-  cursor: pointer;
-  margin-left: 10px;
+.card-label {
+  color: #6b7280;
 }
-.modal-body {
-  padding: 18px 28px 0 28px;
-}
-.modal-row {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-}
-.modal-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.modal-field label {
+.card-value {
+  color: #111827;
   font-weight: 500;
-  margin-bottom: 2px;
-  color: #222;
+  text-align: right;
 }
-.modal-field select {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #dbe3ea;
-  font-size: 1rem;
-  background: #fafbfc;
-}
-.modal-dropzone {
-  border: 2px dashed #b5c6d6;
-  border-radius: 8px;
-  background: #f7fafd;
-  padding: 32px 0;
-  text-align: center;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.modal-dropzone:hover {
-  border-color: #2196f3;
-}
-.modal-dropzone-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.modal-upload-label {
-  color: #2196f3;
-  cursor: pointer;
-  font-weight: 500;
-}
-.modal-upload-link {
-  color: #2196f3;
-  text-decoration: underline;
-  cursor: pointer;
-}
-.modal-dropzone-desc {
-  color: #888;
-  font-size: 0.97rem;
-}
-.modal-file-name {
-  margin-top: 6px;
-  color: #43a047;
-  font-size: 0.98rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.modal-sample-link {
-  margin: 12px 0 0 0;
-}
-.modal-sample-link a {
-  color: #2196f3;
-  text-decoration: underline;
-  font-size: 0.97rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.modal-footer {
+.card-footer {
+  padding: 8px 16px;
+  background-color: #f9fafb;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 18px 28px 18px 28px;
-  border-top: 1px solid #f0f0f0;
-  background: #fafbfc;
-  border-radius: 0 0 10px 10px;
+  gap: 8px;
 }
-.modal-btn {
-  min-width: 80px;
-  padding: 8px 18px;
+
+/* ----- ELEMENT PLUS CUSTOMIZATION ----- */
+.page-container :deep(.el-button) {
   border-radius: 6px;
-  border: none;
-  font-size: 1rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
 }
-.modal-btn.cancel {
-  background: #fff;
-  color: #2196f3;
-  border: 1px solid #2196f3;
+.page-container :deep(.el-input__wrapper) {
+  border-radius: 6px;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db;
 }
-.modal-btn.import {
-  background: #2196f3;
-  color: #fff;
-  border: none;
-}
-.modal-btn.import:disabled {
-  background: #b5c6d6;
-  color: #fff;
-  cursor: not-allowed;
-}
-.modal-btn.import:hover:enabled {
-  background: #1976d2;
+
+/* ----- DESKTOP OVERRIDES ----- */
+@media (min-width: 768px) {
+  .page-container {
+    padding: 24px 32px;
+  }
+  .page-title {
+    font-size: 1.75rem;
+  }
+  .filters-bar {
+    padding: 16px 20px;
+  }
+  .pagination-container {
+    justify-content: flex-end;
+  }
+  .page-container :deep(.el-button--primary) {
+    background-color: #2563eb;
+    border-color: #2563eb;
+  }
+  .page-container :deep(.el-input) {
+    max-width: 400px;
+  }
+  .page-container :deep(.el-table th) {
+    background-color: #f9fafb !important;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .page-container :deep(.el-table td.el-table__cell) {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 14px 0;
+  }
+  .page-container :deep(.el-table .el-table__row:hover > td) {
+    background-color: #f9fafb !important;
+  }
+  .page-container
+    :deep(
+      .el-pagination.is-background .el-pager li:not(.is-disabled).is-active
+    ) {
+    background-color: #2563eb;
+  }
 }
 </style>
