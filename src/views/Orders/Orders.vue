@@ -148,7 +148,6 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { Search, Plus, View } from "@element-plus/icons-vue";
@@ -211,9 +210,7 @@ const sampleOrders = [
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
-
 const formatCurrency = (value) => value.toLocaleString("vi-VN") + "đ";
-
 const getPaymentStatusType = (status) =>
   status === "Đã thanh toán" ? "success" : "warning";
 const getFulfillmentStatusType = (status) => {
@@ -224,20 +221,44 @@ const getFulfillmentStatusType = (status) => {
   return "info";
 };
 
+// === SỬA ĐỔI: Thêm hàm chuyển đổi từ tab name sang status text ===
+const getStatusFromTab = (tabName) => {
+  const statusMap = {
+    pending: "Chờ xử lý",
+    shipping: "Đang giao",
+    completed: "Hoàn thành",
+    cancelled: "Đã hủy",
+  };
+  return statusMap[tabName];
+};
+
+// === SỬA ĐỔI: Cập nhật lại toàn bộ logic lọc trong computed ===
 const filteredOrders = computed(() => {
   return orders.value.filter((item) => {
+    // 1. Lọc theo ô tìm kiếm
     const searchMatch = search.value
       ? item.orderCode.toLowerCase().includes(search.value.toLowerCase()) ||
         item.customerName.toLowerCase().includes(search.value.toLowerCase())
       : true;
 
+    // 2. Lọc theo Tab trạng thái
     const tabMatch =
-      activeTab.value !== "all"
-        ? item.fulfillmentStatus.toLowerCase().replace(" ", "") ===
-          activeTab.value
-        : true;
+      activeTab.value === "all"
+        ? true
+        : item.fulfillmentStatus === getStatusFromTab(activeTab.value);
 
-    return searchMatch && tabMatch;
+    // 3. Lọc theo khoảng ngày
+    const dateMatch = (() => {
+      if (!dateRange.value || dateRange.value.length !== 2) return true;
+      const orderDate = new Date(item.orderDate.split(" ")[0]); // Lấy phần ngày của đơn hàng
+      const startDate = new Date(dateRange.value[0]);
+      const endDate = new Date(dateRange.value[1]);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      return orderDate >= startDate && orderDate <= endDate;
+    })();
+
+    return searchMatch && tabMatch && dateMatch;
   });
 });
 
@@ -246,7 +267,8 @@ const pagedOrders = computed(() => {
   return filteredOrders.value.slice(start, start + pageSize);
 });
 
-watch(activeTab, () => {
+// === SỬA ĐỔI: Theo dõi TẤT CẢ các bộ lọc để reset trang về 1 ===
+watch([activeTab, search, dateRange], () => {
   currentPage.value = 1;
 });
 
@@ -256,7 +278,6 @@ const createOrder = () => {};
 onMounted(() => {
   checkScreenSize();
   window.addEventListener("resize", checkScreenSize);
-  // Giả lập tải dữ liệu từ API
   setTimeout(() => {
     orders.value = sampleOrders;
     isLoading.value = false;

@@ -1,391 +1,156 @@
 <template>
   <div class="page-container">
     <div class="page-header">
-      <h1 class="page-title">Sổ quỹ</h1>
-      <div class="action-buttons-group">
-        <el-button :icon="Download">Xuất file</el-button>
-        <el-button type="primary" :icon="Plus" @click="openDrawer()">
-          Thêm giao dịch
-        </el-button>
-      </div>
+      <h1 class="page-title">Đơn hàng nháp</h1>
+      <el-button type="primary" :icon="Plus" @click="createDraftOrder">
+        Tạo đơn nháp
+      </el-button>
     </div>
-    <div class="filter-card">
-      <el-date-picker
-        class="filter-item"
-        v-model="filters.dateRange"
-        type="daterange"
-        range-separator="-"
-        start-placeholder="Từ ngày"
-        end-placeholder="Đến ngày"
-      />
-      <el-select
-        class="filter-item"
-        v-model="filters.type"
-        placeholder="Loại giao dịch"
-        clearable
-      >
-        <el-option label="Tất cả" value="all" />
-        <el-option label="Phiếu thu" value="thu" />
-        <el-option label="Phiếu chi" value="chi" />
-      </el-select>
-      <el-select
-        class="filter-item"
-        v-model="filters.employee"
-        placeholder="Nhân viên"
-        clearable
-      >
-        <el-option label="Tất cả" value="all" />
-        <el-option label="Nhân viên A" value="Nhân viên A" />
-        <el-option label="Nhân viên B" value="Nhân viên B" />
-        <el-option label="Admin" value="Admin" />
-      </el-select>
-      <el-button
-        class="filter-item"
-        type="primary"
-        :icon="Search"
-        @click="handleSearch"
-        >Tìm kiếm</el-button
-      >
-    </div>
-
-    <div class="stats-grid"></div>
 
     <div class="table-container">
+      <div class="filters-bar"></div>
+
       <el-table
         v-if="!isMobile"
-        :data="pagedTransactions"
+        :data="pagedDrafts"
         v-loading="isLoading"
         style="width: 100%"
       >
-        <el-table-column label="Giao dịch" min-width="280">
+        <el-table-column prop="draftCode" label="Mã đơn nháp" width="150" />
+        <el-table-column prop="createdBy" label="Người tạo" width="150" />
+        <el-table-column
+          prop="customerName"
+          label="Khách hàng"
+          min-width="180"
+        />
+        <el-table-column prop="createdDate" label="Ngày tạo" width="160" />
+        <el-table-column label="Giá trị" width="150" align="right">
           <template #default="scope">
-            <div class="transaction-main-info">
-              <div class="transaction-description">
-                {{ scope.row.description }}
-              </div>
-              <div class="transaction-sub-info">
-                <span>{{ scope.row.datetime }}</span> |
-                <span>Mã: {{ scope.row.code }}</span>
-              </div>
+            <span class="total-amount">{{
+              formatCurrency(scope.row.totalAmount)
+            }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="Thao tác" width="220" align="center">
+          <template #default>
+            <div class="action-buttons">
+              <el-button size="small" type="primary" :icon="ShoppingCartFull"
+                >Hoàn tất đơn</el-button
+              >
+
+              <el-dropdown trigger="click">
+                <el-button
+                  size="small"
+                  :icon="MoreFilled"
+                  circle
+                  text
+                  style="margin-left: 8px"
+                />
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item :icon="Promotion"
+                      >Gửi link thanh toán</el-dropdown-item
+                    >
+                    <el-dropdown-item :icon="Delete" class="delete-action"
+                      >Xóa</el-dropdown-item
+                    >
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Loại" width="120" align="center">
-          <template #default="scope">
-            <el-tag
-              :type="scope.row.type === 'thu' ? 'success' : 'danger'"
-              size="small"
-              >{{
-                scope.row.type === "thu" ? "Phiếu thu" : "Phiếu chi"
-              }}</el-tag
-            >
-          </template>
-        </el-table-column>
-        <el-table-column label="Phương thức / Người tạo" min-width="180">
-          <template #default="scope">
-            <div class="transaction-meta-info">
-              <div class="payment-method">{{ scope.row.paymentMethod }}</div>
-              <div class="employee-name">{{ scope.row.employee }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="Số tiền" width="150" align="right">
-          <template #default="scope">
-            <span
-              :class="[
-                'amount',
-                scope.row.type === 'thu' ? 'income' : 'expense',
-              ]"
-            >
-              {{ scope.row.type === "thu" ? "+" : "-" }}
-              {{ formatCurrency(scope.row.amount) }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="Thao tác" width="100" align="center">
-          <div class="action-buttons">
-            <el-button
-              size="small"
-              :icon="Edit"
-              circle
-              @click="openDrawer(scope.row)"
-            />
-            <el-button
-              size="small"
-              :icon="Delete"
-              type="danger"
-              circle
-              plain
-              @click="handleDelete(scope.row)"
-            />
-          </div>
-        </el-table-column>
-        <template #append> </template>
       </el-table>
 
       <div v-else class="mobile-card-list"></div>
 
-      <el-empty
-        v-if="!isLoading && pagedTransactions.length === 0"
-        description="Không có giao dịch nào"
-      />
+      <el-empty v-if="!isLoading && pagedDrafts.length === 0"> </el-empty>
     </div>
 
     <div class="pagination-container"></div>
-
-    <el-drawer
-      v-model="drawerVisible"
-      :title="isEditMode ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch mới'"
-      direction="rtl"
-      :size="isMobile ? '95%' : '450px'"
-    >
-    </el-drawer>
   </div>
 </template>
 
 <script setup>
-// Toàn bộ phần script không thay đổi, bạn có thể giữ nguyên
-import { ref, computed, onMounted, onBeforeUnmount, reactive } from "vue";
-import { Search, Plus, Download, Edit, Delete } from "@element-plus/icons-vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+// SỬA ĐỔI: Thêm icon MoreFilled cho dropdown
+import {
+  Search,
+  Plus,
+  Promotion,
+  ShoppingCartFull,
+  Delete,
+  MoreFilled,
+} from "@element-plus/icons-vue";
 
+// --- STATE ---
 const isMobile = ref(false);
 const isLoading = ref(true);
-const transactions = ref([]);
+const search = ref("");
+const dateRange = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
-const drawerVisible = ref(false);
-const isEditMode = ref(false);
+const drafts = ref([]);
 
-const checkScreenSize = () => {
-  isMobile.value = window.innerWidth < 768;
-};
-
-const filters = reactive({
-  dateRange: [new Date(), new Date()],
-  type: "all",
-  employee: "all",
-});
-
-const form = reactive({
-  id: null,
-  type: "thu",
-  amount: null,
-  description: "",
-  paymentMethod: "Tiền mặt",
-  employee: "Admin",
-});
-
-const sampleTransactions = [
+// --- DỮ LIỆU MẪU ---
+const sampleDrafts = [
   {
-    id: 1,
-    datetime: "2025-08-08 10:30",
-    code: "PT001",
-    description: "Thu tiền đơn hàng DH1235",
-    type: "thu",
-    paymentMethod: "Tiền mặt",
-    amount: 1250000,
-    employee: "Nhân viên A",
+    draftCode: "DRAFT001",
+    createdBy: "Nhân viên A",
+    customerName: "Nguyễn Văn An",
+    createdDate: "2025-08-08 11:05",
+    totalAmount: 150000,
   },
   {
-    id: 2,
-    datetime: "2025-08-08 09:15",
-    code: "PC001",
-    description: "Chi mua văn phòng phẩm",
-    type: "chi",
-    paymentMethod: "Tiền mặt",
-    amount: 350000,
-    employee: "Admin",
+    draftCode: "DRAFT002",
+    createdBy: "Admin",
+    customerName: "Khách vãng lai",
+    createdDate: "2025-08-07 16:20",
+    totalAmount: 320000,
   },
   {
-    id: 3,
-    datetime: "2025-08-07 15:45",
-    code: "PT002",
-    description: "Thu tiền đơn hàng DH1234",
-    type: "thu",
-    paymentMethod: "Chuyển khoản",
-    amount: 850000,
-    employee: "Nhân viên A",
-  },
-  {
-    id: 4,
-    datetime: "2025-08-07 14:00",
-    code: "PC002",
-    description: "Chi trả tiền điện",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 1200000,
-    employee: "Admin",
-  },
-  {
-    id: 5,
-    datetime: "2025-08-06 18:00",
-    code: "PT003",
-    description: "Thu tiền đơn hàng DH1233",
-    type: "thu",
-    paymentMethod: "Thẻ",
-    amount: 320000,
-    employee: "Nhân viên B",
-  },
-  {
-    id: 6,
-    datetime: "2025-08-06 11:20",
-    code: "PC003",
-    description: "Chi nhập hàng NCC A",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 5500000,
-    employee: "Admin",
-  },
-  {
-    id: 7,
-    datetime: "2025-08-05 19:30",
-    code: "PT004",
-    description: "Thu tiền đơn hàng DH1232",
-    type: "thu",
-    paymentMethod: "Tiền mặt",
-    amount: 2100000,
-    employee: "Nhân viên B",
-  },
-  {
-    id: 8,
-    datetime: "2025-08-05 12:00",
-    code: "PC004",
-    description: "Chi trả lương nhân viên",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 10000000,
-    employee: "Admin",
-  },
-  {
-    id: 9,
-    datetime: "2025-08-04 17:00",
-    code: "PT005",
-    description: "Thu tiền dịch vụ spa",
-    type: "thu",
-    paymentMethod: "Thẻ",
-    amount: 750000,
-    employee: "Nhân viên A",
-  },
-  {
-    id: 10,
-    datetime: "2025-08-04 10:10",
-    code: "PC005",
-    description: "Chi mua dụng cụ",
-    type: "chi",
-    paymentMethod: "Tiền mặt",
-    amount: 680000,
-    employee: "Nhân viên B",
-  },
-  {
-    id: 11,
-    datetime: "2025-08-03 20:00",
-    code: "PT006",
-    description: "Thu tiền đơn hàng DH1231",
-    type: "thu",
-    paymentMethod: "Chuyển khoản",
-    amount: 50000,
-    employee: "Nhân viên A",
-  },
-  {
-    id: 12,
-    datetime: "2025-08-03 08:30",
-    code: "PC006",
-    description: "Chi tiền marketing",
-    type: "chi",
-    paymentMethod: "Chuyển khoản",
-    amount: 2000000,
-    employee: "Admin",
+    draftCode: "DRAFT003",
+    createdBy: "Nhân viên B",
+    customerName: "Trần Thị Bích",
+    createdDate: "2025-08-06 09:30",
+    totalAmount: 85000,
   },
 ];
 
-const formatCurrency = (value) => (value || 0).toLocaleString("vi-VN") + "đ";
+// --- LOGIC ---
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+const formatCurrency = (value) => value.toLocaleString("vi-VN") + "đ";
 
-const filteredTransactions = computed(() => {
-  return transactions.value.filter((t) => {
-    const typeMatch = filters.type === "all" || t.type === filters.type;
-    const employeeMatch =
-      filters.employee === "all" || t.employee === filters.employee;
-    return typeMatch && employeeMatch;
+const filteredDrafts = computed(() => {
+  return drafts.value.filter((item) => {
+    const searchMatch = search.value
+      ? item.draftCode.toLowerCase().includes(search.value.toLowerCase()) ||
+        item.customerName.toLowerCase().includes(search.value.toLowerCase())
+      : true;
+
+    return searchMatch;
   });
 });
 
-const pagedTransactions = computed(() => {
+const pagedDrafts = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
-  return filteredTransactions.value.slice(start, start + pageSize);
+  return filteredDrafts.value.slice(start, start + pageSize);
 });
 
-const summary = computed(() => {
-  const openingBalance = 5000000;
-  const totalIncome = filteredTransactions.value
-    .filter((t) => t.type === "thu")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalExpense = filteredTransactions.value
-    .filter((t) => t.type === "chi")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const closingBalance = openingBalance + totalIncome - totalExpense;
-  return { openingBalance, totalIncome, totalExpense, closingBalance };
+const createDraftOrder = () => {};
+watch(search, () => {
+  currentPage.value = 1;
 });
 
-const handleSearch = () => {
-  ElMessage.info("Đã áp dụng bộ lọc!");
-};
-const openDrawer = (transaction = null) => {
-  if (transaction) {
-    isEditMode.value = true;
-    Object.assign(form, transaction);
-  } else {
-    isEditMode.value = false;
-    Object.assign(form, {
-      id: null,
-      type: "thu",
-      amount: null,
-      description: "",
-      paymentMethod: "Tiền mặt",
-      employee: "Admin",
-    });
-  }
-  drawerVisible.value = true;
-};
-const handleSave = () => {
-  if (isEditMode.value) {
-    const index = transactions.value.findIndex((t) => t.id === form.id);
-    if (index !== -1) transactions.value[index] = { ...form };
-  } else {
-    transactions.value.unshift({
-      ...form,
-      id: Date.now(),
-      code: (form.type === "thu" ? "PT" : "PC") + "004",
-      datetime: new Date().toLocaleString("vi-VN"),
-    });
-  }
-  ElMessage.success("Lưu giao dịch thành công!");
-  drawerVisible.value = false;
-};
-const handleDelete = (transaction) => {
-  ElMessageBox.confirm(
-    `Bạn có chắc muốn xóa phiếu "${transaction.code}" không?`,
-    "Xác nhận xóa",
-    {
-      confirmButtonText: "Đồng ý",
-      cancelButtonText: "Hủy",
-      type: "warning",
-    }
-  )
-    .then(() => {
-      transactions.value = transactions.value.filter(
-        (t) => t.id !== transaction.id
-      );
-      ElMessage.success("Xóa thành công");
-    })
-    .catch(() => {});
-};
-
+// --- LIFECYCLE HOOKS ---
 onMounted(() => {
   checkScreenSize();
   window.addEventListener("resize", checkScreenSize);
   setTimeout(() => {
-    transactions.value = sampleTransactions;
+    drafts.value = sampleDrafts;
     isLoading.value = false;
   }, 500);
 });
@@ -395,93 +160,38 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* @import './responsive-style.css'; */
-
-/* === SỬA ĐỔI: CSS cho bộ lọc và các cột trong bảng === */
-.filter-card {
-  padding: 20px;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  margin-bottom: 24px;
-  display: flex;
-  flex-wrap: wrap; /* Tự động xuống dòng trên màn hình hẹp */
-  gap: 16px;
-}
-.filter-item {
-  flex-grow: 1; /* Cho các item co giãn */
-}
-.transaction-main-info {
-  font-weight: 500;
-}
-.transaction-description {
-  color: #111827;
-}
-.transaction-sub-info {
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-weight: 400;
-  margin-top: 2px;
-}
-.transaction-meta-info {
-  font-size: 0.9rem;
-}
-.payment-method {
-  font-weight: 500;
-  color: #374151;
-}
-.employee-name {
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-.amount {
+.total-amount {
   font-weight: 600;
+  color: #1f2937;
 }
-/* ============================================== */
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
+.filters-bar {
+  justify-content: space-between;
 }
-.stat-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  padding: 20px;
+.orders-empty-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
 }
-.stat-title {
+.orders-empty-desc {
+  font-size: 0.9rem;
   color: #6b7280;
-  margin-bottom: 8px;
+  max-width: 400px;
+  margin-top: 8px;
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-}
-.income {
-  color: #16a34a;
-}
-.expense {
-  color: #dc2626;
-}
-.closing-balance {
-  color: #2563eb;
-}
-.table-footer-summary {
+/* SỬA ĐỔI: CSS cho dropdown menu và action button */
+.action-buttons {
   display: flex;
-  justify-content: flex-end;
-  gap: 40px;
-  padding: 16px 24px;
-  font-size: 0.95rem;
-  background-color: #f8fafc;
+  align-items: center;
+  justify-content: center;
 }
-.summary-item span {
-  color: #6b7280;
+.delete-action {
+  color: var(--el-color-danger);
 }
-.summary-item strong {
-  color: #111827;
+.delete-action:hover {
+  background-color: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
 }
 
 /* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */

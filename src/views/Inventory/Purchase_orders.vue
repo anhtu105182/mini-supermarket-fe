@@ -201,7 +201,6 @@
     </el-dialog>
   </div>
 </template>
-
 <script setup>
 import {
   ref,
@@ -282,6 +281,17 @@ const getStatusType = (status) => {
   return "info";
 };
 
+// === SỬA ĐỔI: Thêm hàm chuyển đổi từ tab name sang status text ===
+const getStatusFromTab = (tabName) => {
+  const statusMap = {
+    draft: "Nháp",
+    ordered: "Đã đặt hàng",
+    received: "Đã nhập kho",
+    cancelled: "Đã hủy",
+  };
+  return statusMap[tabName];
+};
+
 const filteredPOs = computed(() => {
   return purchaseOrders.value.filter((item) => {
     const searchMatch = search.value
@@ -291,10 +301,13 @@ const filteredPOs = computed(() => {
     const supplierMatch = supplierFilter.value
       ? item.supplier === supplierFilter.value
       : true;
+
+    // === SỬA ĐỔI: Sửa lại logic lọc theo tab cho chính xác ===
     const tabMatch =
-      activeTab.value !== "all"
-        ? item.status.toLowerCase().replace(/ /g, "") === activeTab.value
-        : true;
+      activeTab.value === "all"
+        ? true
+        : item.status === getStatusFromTab(activeTab.value);
+
     return searchMatch && supplierMatch && tabMatch;
   });
 });

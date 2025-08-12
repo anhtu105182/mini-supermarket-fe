@@ -1,473 +1,464 @@
 <template>
-  <div class="orders-page">
-    <div class="orders-header">
-      <h1 class="orders-title">Danh sách khuyến mại</h1>
-      <!-- <div class="export-file" @click="showExportModal = true">Xuất file</div> -->
+  <div class="page-container">
+    <div class="page-header">
+      <h1 class="page-title">Khuyến mại</h1>
+      <el-button type="primary" :icon="Plus" @click="createDiscount">
+        Tạo khuyến mại
+      </el-button>
     </div>
-    <div class="orders-table">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="i in 3" :key="i">
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-          </tr>
-        </tbody>
-      </table>
-      <EmptyState
-        icon="https://cdn-icons-png.flaticon.com/512/1048/1048953.png"
-        title="Cửa hàng của bạn chưa có khuyến mại nào"
-        description="Vui lòng tạo mã khuyến mại hoặc chương trình khuyến mại cho cửa hàng của bạn"
-      >
-        <template #actions>
-          <button class="orders-add-btn-import" @click="showExportModal = true">
-            <i class="fa fa-plus-circle"></i>Tạo khuyến mại
-          </button>
-          <!-- <button class="orders-add-btn">
-            <i class="fa fa-plus-circle"></i> Tạo đơn đặt hàng
-          </button> -->
-        </template>
-      </EmptyState>
-    </div>
-    <div class="orders-footer">
-      Tìm hiểu về <a href="#" class="orders-link">vận đơn </a>
-    </div>
-    <!-- Modal Nhập file -->
-    <div
-      v-if="showExportModal"
-      class="modal-overlay"
-      @click.self="showExportModal = false"
-    >
-      <div class="modal-import">
-        <div class="modal-header">
-          <span>Nhập file danh sách đơn đặt hàng nhập</span>
-          <button class="modal-close" @click="showExportModal = false">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-row">
-            <div class="modal-field">
-              <label>Chi nhánh tạo đơn</label>
-              <select v-model="selectedBranch">
-                <option value="">Chọn chi nhánh</option>
-                <option v-for="b in branches" :key="b" :value="b">
-                  {{ b }}
-                </option>
-              </select>
-            </div>
-            <div class="modal-field">
-              <label>Nhà cung cấp</label>
-              <select v-model="selectedSupplier">
-                <option value="">Chọn nhà cung cấp</option>
-                <option v-for="s in suppliers" :key="s" :value="s">
-                  {{ s }}
-                </option>
-              </select>
-            </div>
-          </div>
-          <div
-            class="modal-dropzone"
-            @dragover.prevent
-            @drop.prevent="handleDrop"
-          >
-            <div class="modal-dropzone-content">
-              <i
-                class="fa fa-cloud-upload"
-                style="font-size: 2.2rem; color: #2196f3"
-              ></i>
-              <div>
-                Kéo thả file vào đây hoặc
-                <label class="modal-upload-label">
-                  <input
-                    type="file"
-                    style="display: none"
-                    @change="handleFileChange"
-                  />
-                  <span class="modal-upload-link">tải lên từ thiết bị</span>
-                </label>
-              </div>
-              <div class="modal-dropzone-desc">
-                (Tối đa 3MB, định dạng .xls hoặc .xlsx)
-              </div>
-              <div v-if="fileName" class="modal-file-name">
-                <i class="fa fa-file-excel" style="color: #43a047"></i>
-                {{ fileName }}
-              </div>
-            </div>
-          </div>
-          <div class="modal-sample-link">
-            <a href="#" @click.prevent="downloadSample">
-              <i class="fa fa-download"></i> Tải file dữ liệu mẫu
-            </a>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn cancel" @click="showExportModal = false">
-            Hủy
-          </button>
-          <button
-            class="modal-btn import"
-            :disabled="!fileName"
-            @click="importFile"
-          >
-            Nhập file
-          </button>
-        </div>
+
+    <el-tabs v-model="activeTab" class="order-tabs">
+      <el-tab-pane label="Tất cả" name="all"></el-tab-pane>
+      <el-tab-pane label="Đang diễn ra" name="active"></el-tab-pane>
+      <el-tab-pane label="Sắp diễn ra" name="scheduled"></el-tab-pane>
+      <el-tab-pane label="Đã kết thúc" name="expired"></el-tab-pane>
+    </el-tabs>
+
+    <div class="table-container">
+      <div class="filters-bar">
+        <el-input
+          v-model="search"
+          placeholder="Tìm theo tên hoặc mã khuyến mại..."
+          clearable
+          :prefix-icon="Search"
+        />
       </div>
+
+      <el-table
+        v-if="!isMobile"
+        :data="pagedDiscounts"
+        v-loading="isLoading"
+        style="width: 100%"
+      >
+        <el-table-column label="Tên chương trình" min-width="300">
+          <template #default="scope">
+            <div class="discount-info">
+              <div class="discount-name">{{ scope.row.name }}</div>
+              <div class="discount-code">
+                Mã: <strong>{{ scope.row.code }}</strong>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="Thời gian hiệu lực" width="250">
+          <template #default="scope">
+            <span>{{ scope.row.startDate }} - {{ scope.row.endDate }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="usageCount"
+          label="Lượt sử dụng"
+          width="150"
+          align="center"
+        />
+        <el-table-column label="Trạng thái" width="150" align="center">
+          <template #default="scope"
+            ><el-tag
+              :type="getStatusType(scope.row.status)"
+              effect="light"
+              size="small"
+              >{{ scope.row.status }}</el-tag
+            ></template
+          >
+        </el-table-column>
+        <el-table-column label="Thao tác" width="120" align="center">
+          <div class="action-buttons">
+            <el-button size="small" :icon="Edit" text bg>Sửa</el-button>
+          </div>
+        </el-table-column>
+      </el-table>
+
+      <div v-else class="mobile-card-list"></div>
+
+      <el-empty
+        v-if="!isLoading && pagedDiscounts.length === 0"
+        description="Không có khuyến mại nào phù hợp"
+      />
+    </div>
+
+    <div class="pagination-container">
+      <el-pagination
+        v-if="filteredDiscounts.length > 0"
+        :small="isMobile"
+        background
+        layout="total, prev, pager, next"
+        :total="filteredDiscounts.length"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import EmptyState from "@/components/EmptyState.vue";
-import { ref } from "vue";
-const showExportModal = ref(false);
-const selectedBranch = ref("");
-const selectedSupplier = ref("");
-const fileName = ref("");
-const branches = ["Chi nhánh 1", "Chi nhánh 2"];
-const suppliers = ["Nhà cung cấp A", "Nhà cung cấp B"];
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { Search, Plus, Edit } from "@element-plus/icons-vue";
 
-function handleFileChange(e) {
-  const file = e.target.files[0];
-  if (file) fileName.value = file.name;
-}
-function handleDrop(e) {
-  const file = e.dataTransfer.files[0];
-  if (file) fileName.value = file.name;
-}
-function downloadSample() {
-  // Tải file mẫu, có thể thay bằng đường dẫn thực tế
-  window.open("/sample.xlsx", "_blank");
-}
-function importFile() {
-  // Xử lý nhập file ở đây
-  showExportModal.value = false;
-  fileName.value = "";
-}
+// --- STATE ---
+const isMobile = ref(false);
+const isLoading = ref(true);
+const search = ref("");
+const activeTab = ref("all");
+const currentPage = ref(1);
+const pageSize = 10;
+const discounts = ref([]);
+
+// --- DỮ LIỆU MẪU ---
+const sampleDiscounts = [
+  {
+    name: "Giảm 20% tổng đơn hàng",
+    code: "SALE20",
+    startDate: "2025-08-01",
+    endDate: "2025-08-31",
+    usageCount: 152,
+    status: "Đang diễn ra",
+  },
+  {
+    name: "Freeship cho đơn từ 500k",
+    code: "FREESHIP500",
+    startDate: "2025-08-01",
+    endDate: "2025-08-31",
+    usageCount: 89,
+    status: "Đang diễn ra",
+  },
+  {
+    name: "Lễ Quốc Khánh - Giảm 50k",
+    code: " mung2thang9",
+    startDate: "2025-09-01",
+    endDate: "2025-09-02",
+    usageCount: 0,
+    status: "Sắp diễn ra",
+  },
+  {
+    name: "Chào hè - Giảm 15%",
+    code: "SUMMER15",
+    startDate: "2025-06-01",
+    endDate: "2025-07-31",
+    usageCount: 340,
+    status: "Đã kết thúc",
+  },
+  {
+    name: "Giảm 100k cho khách hàng VIP",
+    code: "VIP100K",
+    startDate: "2025-01-01",
+    endDate: "2025-12-31",
+    usageCount: 25,
+    status: "Đang diễn ra",
+  },
+  {
+    name: "Giảm 20% tổng đơn hàng",
+    code: "SALE20",
+    startDate: "2025-08-01",
+    endDate: "2025-08-31",
+    usageCount: 152,
+    status: "Đang diễn ra",
+  },
+  {
+    name: "Freeship cho đơn từ 500k",
+    code: "FREESHIP500",
+    startDate: "2025-08-01",
+    endDate: "2025-08-31",
+    usageCount: 89,
+    status: "Đang diễn ra",
+  },
+  {
+    name: "Lễ Quốc Khánh - Giảm 50k",
+    code: " mung2thang9",
+    startDate: "2025-09-01",
+    endDate: "2025-09-02",
+    usageCount: 0,
+    status: "Sắp diễn ra",
+  },
+  {
+    name: "Chào hè - Giảm 15%",
+    code: "SUMMER15",
+    startDate: "2025-06-01",
+    endDate: "2025-07-31",
+    usageCount: 340,
+    status: "Đã kết thúc",
+  },
+  {
+    name: "Giảm 100k cho khách hàng VIP",
+    code: "VIP100K",
+    startDate: "2025-01-01",
+    endDate: "2025-12-31",
+    usageCount: 25,
+    status: "Đang diễn ra",
+  },
+];
+
+// --- LOGIC ---
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+const getStatusType = (status) => {
+  if (status === "Đang diễn ra") return "success";
+  if (status === "Sắp diễn ra") return "warning";
+  if (status === "Đã kết thúc") return "info";
+  return "";
+};
+
+// === SỬA ĐỔI: Thêm hàm chuyển đổi từ tab name sang status text ===
+const getStatusFromTab = (tabName) => {
+  const statusMap = {
+    active: "Đang diễn ra",
+    scheduled: "Sắp diễn ra",
+    expired: "Đã kết thúc",
+  };
+  return statusMap[tabName];
+};
+// =============================================================
+
+const filteredDiscounts = computed(() => {
+  return discounts.value.filter((item) => {
+    // Lọc theo ô tìm kiếm
+    const searchMatch = search.value
+      ? item.name.toLowerCase().includes(search.value.toLowerCase()) ||
+        item.code.toLowerCase().includes(search.value.toLowerCase())
+      : true;
+
+    // === SỬA ĐỔI: Sửa lại logic lọc theo tab cho chính xác ===
+    const tabMatch =
+      activeTab.value === "all"
+        ? true
+        : item.status === getStatusFromTab(activeTab.value);
+    // ====================================================
+
+    return searchMatch && tabMatch;
+  });
+});
+
+const pagedDiscounts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredDiscounts.value.slice(start, start + pageSize);
+});
+
+const createDiscount = () => {};
+
+// === SỬA ĐỔI: Theo dõi TẤT CẢ các bộ lọc để reset trang về 1 ===
+watch([activeTab, search], () => {
+  currentPage.value = 1;
+});
+// =============================================================
+
+// --- LIFECYCLE HOOKS ---
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  setTimeout(() => {
+    discounts.value = sampleDiscounts;
+    isLoading.value = false;
+  }, 500);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", checkScreenSize);
+});
 </script>
 
 <style scoped>
-.orders-page {
-  padding: 24px 16px 0 16px;
-  background: #f7f7f9;
-  min-height: 100vh;
-}
-.orders-header {
-  display: flex;
+/* @import "./responsive-style.css"; */
+.filters-bar {
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
 }
-.export-file {
-  background: #2196f3;
-  color: #fff;
-  padding: 8px 16px;
-  margin-right: 30px;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
+.order-tabs {
+  margin-bottom: 1px;
 }
-.export-file:hover {
-  background: #1976d2;
+.order-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
+  padding: 0 20px;
+  background-color: #fff;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
 }
-.orders-title {
-  font-size: 2rem;
+.table-container {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.discount-info {
+}
+.discount-name {
   font-weight: 600;
-  margin-bottom: 18px;
-  color: #222;
-  margin-top: 0px;
+  color: #111827;
 }
-.orders-table {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  padding: 24px 0 48px 0;
-  min-height: 500px;
-  position: relative;
-}
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin-bottom: 32px;
-}
-th,
-td {
-  padding: 8px 0;
-}
-.skeleton-header {
-  height: 18px;
-  width: 120px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.5;
-}
-.skeleton-row {
-  height: 16px;
-  width: 100px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.3;
-}
-.orders-empty {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.orders-empty-img {
-  width: 72px;
-  margin-bottom: 16px;
-  opacity: 0.95;
+.discount-code {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 2px;
 }
 .orders-empty-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: #222;
-  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
 }
 .orders-empty-desc {
-  color: #888;
-  margin-bottom: 18px;
-  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  max-width: 400px;
+  margin-top: 8px;
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
-.orders-empty-actions {
+
+@media (max-width: 767px) {
+  .order-tabs :deep(.el-tabs__header) {
+    padding: 0;
+  }
+  .order-tabs :deep(.el-tabs__nav) {
+    width: 100%;
+    display: flex;
+  }
+  .order-tabs :deep(.el-tabs__item) {
+    flex: 1;
+    text-align: center;
+    padding: 0 5px;
+  }
+}
+
+/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+.page-container {
+  padding: 16px;
+  background-color: #f9fafb;
+  font-family: "Inter", sans-serif;
+  min-height: 100vh;
+}
+.page-header {
   display: flex;
-  justify-content: center;
-  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
+  margin-bottom: 24px;
 }
-.orders-add-btn {
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ----- CONTAINERS & BARS ----- */
+.table-container {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.filters-bar {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
-.orders-add-btn:hover {
-  background: #1976d2;
-}
-.orders-add-btn-import {
-  background: #fbfdff;
-  color: #2196f3;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
-  border: 1px solid #2196f3;
-}
-.orders-footer {
-  text-align: right;
-  margin-top: 18px;
-  color: #888;
-  font-size: 0.97rem;
+.pagination-container {
   display: flex;
   justify-content: center;
+  margin-top: 24px;
 }
-.orders-link {
-  color: #2196f3;
-  text-decoration: underline;
-}
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  z-index: 9999;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
+.action-buttons {
   display: flex;
-  align-items: center;
+  gap: 8px;
   justify-content: center;
 }
-.modal-import {
+
+/* ----- MOBILE CARD STYLES ----- */
+.mobile-card-list {
+  padding: 16px;
+}
+.mobile-card {
   background: #fff;
-  border-radius: 10px;
-  min-width: 520px;
-  max-width: 98vw;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.13);
-  padding: 0;
-  animation: modalIn 0.18s;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  font-weight: 600;
+}
+.card-title {
+  color: #111827;
+}
+.card-body {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
-@keyframes modalIn {
-  from {
-    transform: translateY(-30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-.modal-header {
+.card-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 28px 10px 28px;
-  font-size: 1.18rem;
-  font-weight: 600;
-  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.9rem;
 }
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #888;
-  cursor: pointer;
-  margin-left: 10px;
+.card-label {
+  color: #6b7280;
 }
-.modal-body {
-  padding: 18px 28px 0 28px;
-}
-.modal-row {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-}
-.modal-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.modal-field label {
+.card-value {
+  color: #111827;
   font-weight: 500;
-  margin-bottom: 2px;
-  color: #222;
+  text-align: right;
 }
-.modal-field select {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #dbe3ea;
-  font-size: 1rem;
-  background: #fafbfc;
-}
-.modal-dropzone {
-  border: 2px dashed #b5c6d6;
-  border-radius: 8px;
-  background: #f7fafd;
-  padding: 32px 0;
-  text-align: center;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.modal-dropzone:hover {
-  border-color: #2196f3;
-}
-.modal-dropzone-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.modal-upload-label {
-  color: #2196f3;
-  cursor: pointer;
-  font-weight: 500;
-}
-.modal-upload-link {
-  color: #2196f3;
-  text-decoration: underline;
-  cursor: pointer;
-}
-.modal-dropzone-desc {
-  color: #888;
-  font-size: 0.97rem;
-}
-.modal-file-name {
-  margin-top: 6px;
-  color: #43a047;
-  font-size: 0.98rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.modal-sample-link {
-  margin: 12px 0 0 0;
-}
-.modal-sample-link a {
-  color: #2196f3;
-  text-decoration: underline;
-  font-size: 0.97rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.modal-footer {
+.card-footer {
+  padding: 8px 16px;
+  background-color: #f9fafb;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 18px 28px 18px 28px;
-  border-top: 1px solid #f0f0f0;
-  background: #fafbfc;
-  border-radius: 0 0 10px 10px;
+  gap: 8px;
 }
-.modal-btn {
-  min-width: 80px;
-  padding: 8px 18px;
+
+/* ----- ELEMENT PLUS CUSTOMIZATION ----- */
+.page-container :deep(.el-button) {
   border-radius: 6px;
-  border: none;
-  font-size: 1rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
 }
-.modal-btn.cancel {
-  background: #fff;
-  color: #2196f3;
-  border: 1px solid #2196f3;
+.page-container :deep(.el-input__wrapper) {
+  border-radius: 6px;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db;
 }
-.modal-btn.import {
-  background: #2196f3;
-  color: #fff;
-  border: none;
-}
-.modal-btn.import:disabled {
-  background: #b5c6d6;
-  color: #fff;
-  cursor: not-allowed;
-}
-.modal-btn.import:hover:enabled {
-  background: #1976d2;
+
+/* ----- DESKTOP OVERRIDES ----- */
+@media (min-width: 768px) {
+  .page-container {
+    padding: 24px 32px;
+  }
+  .page-title {
+    font-size: 1.75rem;
+  }
+  .filters-bar {
+    padding: 16px 20px;
+  }
+  .pagination-container {
+    justify-content: flex-end;
+  }
+  .page-container :deep(.el-button--primary) {
+    background-color: #2563eb;
+    border-color: #2563eb;
+  }
+  .page-container :deep(.el-input) {
+    max-width: 400px;
+  }
+  .page-container :deep(.el-table th) {
+    background-color: #f9fafb !important;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .page-container :deep(.el-table td.el-table__cell) {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 14px 0;
+  }
+  .page-container :deep(.el-table .el-table__row:hover > td) {
+    background-color: #f9fafb !important;
+  }
+  .page-container
+    :deep(
+      .el-pagination.is-background .el-pager li:not(.is-disabled).is-active
+    ) {
+    background-color: #2563eb;
+  }
 }
 </style>

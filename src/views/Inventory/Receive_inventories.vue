@@ -205,6 +205,15 @@ const getStatusType = (status) => {
   return "info";
 };
 
+// === SỬA ĐỔI: Thêm hàm chuyển đổi từ tab name sang status text ===
+const getStatusFromTab = (tabName) => {
+  const statusMap = {
+    draft: "Tạm lưu",
+    completed: "Hoàn thành",
+  };
+  return statusMap[tabName];
+};
+
 const filteredReceipts = computed(() => {
   return receipts.value.filter((item) => {
     const searchMatch = search.value
@@ -214,10 +223,12 @@ const filteredReceipts = computed(() => {
     const supplierMatch = supplierFilter.value
       ? item.supplier === supplierFilter.value
       : true;
+
+    // === SỬA ĐỔI: Sửa lại logic lọc theo tab cho chính xác ===
     const tabMatch =
-      activeTab.value !== "all"
-        ? item.status.toLowerCase().replace(/ /g, "") === activeTab.value
-        : true;
+      activeTab.value === "all"
+        ? true
+        : item.status === getStatusFromTab(activeTab.value);
     return searchMatch && supplierMatch && tabMatch;
   });
 });

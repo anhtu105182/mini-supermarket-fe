@@ -228,7 +228,6 @@ const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
 const formatCurrency = (value) => value.toLocaleString("vi-VN") + "đ";
-
 const getStatusType = (status) => {
   if (status === "Giao thành công") return "success";
   if (status === "Đang giao") return "primary";
@@ -237,19 +236,36 @@ const getStatusType = (status) => {
   return "info";
 };
 
+// === SỬA ĐỔI: Thêm hàm chuyển đổi từ tab name sang status text ===
+const getStatusFromTab = (tabName) => {
+  const statusMap = {
+    pending: "Chờ lấy hàng",
+    shipping: "Đang giao",
+    delivered: "Giao thành công",
+    returning: "Chuyển hoàn",
+  };
+  return statusMap[tabName];
+};
+
 const filteredShipments = computed(() => {
   return shipments.value.filter((item) => {
+    // Lọc theo ô tìm kiếm
     const searchMatch = search.value
       ? item.shipmentCode.toLowerCase().includes(search.value.toLowerCase()) ||
         item.orderCode.toLowerCase().includes(search.value.toLowerCase())
       : true;
+
+    // Lọc theo đối tác giao hàng
     const carrierMatch = carrierFilter.value
       ? item.carrier === carrierFilter.value
       : true;
+
+    // === SỬA ĐỔI: Sửa lại logic lọc theo tab cho chính xác ===
     const tabMatch =
-      activeTab.value !== "all"
-        ? item.status.toLowerCase().replace(/ /g, "") === activeTab.value
-        : true;
+      activeTab.value === "all"
+        ? true
+        : item.status === getStatusFromTab(activeTab.value);
+
     return searchMatch && carrierMatch && tabMatch;
   });
 });
@@ -264,6 +280,8 @@ const handleExport = () => {
   console.log(`Xuất file: ${exportScope.value} - ${exportFormat.value}`);
   exportDialogVisible.value = false;
 };
+
+// Watcher đã đúng, giữ nguyên
 watch([search, activeTab, carrierFilter], () => {
   currentPage.value = 1;
 });

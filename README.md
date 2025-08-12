@@ -24,64 +24,104 @@ npm run lint
 See [Configuration Reference](https://cli.vuejs.org/config/).
 
 
-
-supermarket-app/
-├── public/                            # Chứa các tài nguyên tĩnh
-│   └── index.html                     # File HTML chính, nơi Vue mount vào (#app)
-│
-├── src/                               # Thư mục chứa toàn bộ mã nguồn frontend
-│   ├── assets/                        # Ảnh, logo, font, file CSS tĩnh,...
-│
-│   ├── components/                    # Các component dùng lại nhiều lần trong nhiều view
-│   │   ├── Header.vue                 # Thanh header (top navigation)
-│   │   ├── Sidebar.vue               # Thanh sidebar (menu trái)
-│   │   └── ProductTable.vue          # Bảng hiển thị danh sách sản phẩm
-│
-│   ├── layouts/                       # Các layout gốc (Auth, Dashboard, v.v.)
-│   │   ├── DefaultLayout.vue         # Layout chính khi đã đăng nhập (có Header + Sidebar)
-│   │   └── AuthLayout.vue            # Layout trang đăng nhập, đăng ký
-│
-│   ├── views/                         # Các trang chính tương ứng với từng route
-│   │   ├── Dashboard.vue             # Trang tổng quan, thống kê
-│   │   ├── Login.vue                 # Trang đăng nhập
-│   │   ├── NotFound.vue             # Trang 404 khi không tìm thấy route
-│   │   ├── Product/                  # Quản lý sản phẩm
-│   │   │   ├── collections.vue       # Danh muc sản phẩm
-│   │   │   ├── catalogs.vue          # ban gia  sản phẩm
-│   │   │   └── ProductList.vue       # Danh sách sản phẩm
-│   │   ├── Inventory/                # Quản lý kho
-│   │   │   ├── InventoryList.vue     # Danh sách tồn kho
-│   │   │   └── StockReport.vue       # Báo cáo nhập/xuất kho
-│   │   ├── Sales/                    # Quản lý bán hàng
-│   │   │   └── SalesHistory.vue      # Lịch sử bán hàng
-│   │   ├── Users/                    # Quản lý người dùng
-│   │   │   ├── StaffList.vue         # Danh sách nhân viên
-│   │   │   └── CustomerList.vue      # Danh sách khách hàng
-│
-│   ├── router/                        # Cấu hình định tuyến cho ứng dụng
-│   │   └── index.js                  # Khai báo các route và middleware
-│
-│   ├── store/                         # Quản lý trạng thái toàn cục (Vuex hoặc Pinia)
-│   │   └── index.js                  # Khởi tạo store chính
-│
-│   ├── services/                      # Gọi API backend, tổ chức theo chức năng
-│   │   ├── productService.js         # API sản phẩm (CRUD sản phẩm)
-│   │   ├── authService.js            # API xác thực (đăng nhập, đăng xuất)
-│   │   ├── inventoryService.js       # API kho hàng
-│   │   └── userService.js            # API người dùng (nhân viên, khách hàng)
-│
-│   ├── utils/                         # Các hàm tiện ích dùng chung
-│   │   └── formatCurrency.js         # Hàm định dạng tiền (VD: 10,000₫)
-│
-│   ├── composables/                  # Logic dùng lại theo Composition API (Vue 3)
-│   │   └── useAuth.js                # Composable để xử lý đăng nhập / kiểm tra login
-│
-│   ├── App.vue                       # Component gốc của toàn bộ app
-│   ├── main.js                       # Điểm khởi tạo app, gắn Vue vào DOM, import router/store
-│   └── style/                        # Các file CSS/SCSS tổng thể cho toàn app
-│       └── main.css                  # File style chính (import vào App.vue hoặc main.js)
-│
-├── .env                              # Biến môi trường (VD: VITE_API_URL=http://localhost:3000)
-├── vite.config.js                    # Cấu hình Vite (alias, plugin, server port, v.v.)
-├── package.json                      # Danh sách dependencies, scripts, config project
-└── README.md                         # Ghi chú mô tả cách chạy project, tính năng
+minimart/
+├── 📁 frontend/                          # Thư mục gốc dự án
+│   ├── 📄 package.json                   # Quản lý dependencies
+│   ├── 📄 package-lock.json             # Lock file cho dependencies
+│   ├── 📄 README.md                     # Hướng dẫn dự án
+│   ├── 📄 vue.config.js                 # Cấu hình Vue CLI
+│   ├── 📄 tailwind.config.js            # Cấu hình Tailwind CSS
+│   ├── 📄 postcss.config.js             # Cấu hình PostCSS
+│   ├── 📄 babel.config.js               # Cấu hình Babel
+│   ├── 📄 jsconfig.json                 # Cấu hình JavaScript
+│   │
+│   ├── 📁 public/                       # Thư mục tĩnh
+│   │   ├── 📄 index.html                # File HTML chính
+│   │   └── 📄 favicon.ico               # Icon website
+│   │
+│   ├── 📁 src/                          # Mã nguồn chính
+│   │   ├── 📄 main.js                   # Entry point ứng dụng
+│   │   ├── 📄 App.vue                   # Component gốc
+│   │   │
+│   │   ├── 📁 assets/                   # Tài nguyên tĩnh
+│   │   │   └── 📄 logo.png              # Logo ứng dụng
+│   │   │
+│   │   ├── 📁 components/               # Components dùng chung
+│   │   │   ├── 📄 AppHeader.vue         # Header chính
+│   │   │   ├── 📄 AppSidebar.vue        # Sidebar navigation
+│   │   │   ├── 📄 EmptyState.vue        # Component trạng thái trống
+│   │   │   └── 📄 ProductTable.vue      # Bảng sản phẩm
+│   │   │
+│   │   ├── 📁 composables/              # Vue Composition API
+│   │   │   └── 📄 useAuth.js            # Hook xác thực
+│   │   │
+│   │   ├── 📁 layouts/                  # Layout templates
+│   │   │   ├── 📄 AppLayout.vue         # Layout chính
+│   │   │   ├── 📄 AuthLayout.vue        # Layout xác thực
+│   │   │   └── 📄 Notdata.vue           # Layout không có dữ liệu
+│   │   │
+│   │   ├── 📁 router/                   # Định tuyến
+│   │   │   └── 📄 index.js              # Cấu hình router
+│   │   │
+│   │   ├── 📁 services/                 # API services
+│   │   │   ├── 📄 authService.js        # Service xác thực
+│   │   │   ├── 📄 inventoryService.js   # Service kho hàng
+│   │   │   ├── 📄 productService.js     # Service sản phẩm
+│   │   │   └── 📄 userService.js        # Service người dùng
+│   │   │
+│   │   ├── 📁 store/                    # State management (Pinia)
+│   │   │   └── 📄 index.js              # Cấu hình store
+│   │   │
+│   │   ├── 📁 style/                    # Stylesheets
+│   │   │   ├── 📄 main.css              # CSS chính (Tailwind)
+│   │   │   ├── 📄 responsive_style.css  # CSS responsive
+│   │   │   └── 📄 tailwind.css          # Tailwind utilities
+│   │   │
+│   │   ├── 📁 utils/                    # Utility functions
+│   │   │   └── 📄 formatCurrency.js     # Format tiền tệ
+│   │   │
+│   │   └── 📁 views/                    # Các trang chính
+│   │       ├── 📄 DashboardOverview.vue # Trang tổng quan
+│   │       ├── 📄 LoginPage.vue         # Trang đăng nhập
+│   │       ├── 📄 RegisterPage.vue      # Trang đăng ký
+│   │       ├── 📄 NotFoundPage.vue      # Trang 404
+│   │       │
+│   │       ├── 📁 Cashbook/             # Module sổ quỹ
+│   │       │   └── 📄 Fundbook.vue      # Quản lý quỹ
+│   │       │
+│   │       ├── 📁 Inventory/            # Module kho hàng
+│   │       │   ├── 📄 Inventories.vue   # Danh sách kho
+│   │       │   ├── 📄 Purchase_orders.vue    # Đơn đặt hàng
+│   │       │   ├── 📄 Receive_inventories.vue # Nhập kho
+│   │       │   ├── 📄 Stock_transfers.vue     # Chuyển kho
+│   │       │   ├── 📄 Supplier_returns.vue   # Trả hàng nhà cung cấp
+│   │       │   └── 📄 Suppliers.vue     # Nhà cung cấp
+│   │       │
+│   │       ├── 📁 Orders/               # Module đơn hàng
+│   │       │   ├── 📄 Checkouts.vue     # Thanh toán
+│   │       │   ├── 📄 Draft_Orders.vue  # Đơn hàng nháp
+│   │       │   ├── 📄 Order_Returns.vue # Trả hàng
+│   │       │   └── 📄 Orders.vue        # Danh sách đơn hàng
+│   │       │
+│   │       ├── 📁 Product/              # Module sản phẩm
+│   │       │   ├── 📄 Catalogs.vue      # Danh mục sản phẩm
+│   │       │   ├── 📄 Collections.vue   # Bộ sưu tập
+│   │       │   └── 📄 ProductList.vue   # Danh sách sản phẩm
+│   │       │
+│   │       ├── 📁 Reports/              # Module báo cáo
+│   │       │   ├── 📄 Reports_list.vue  # Danh sách báo cáo
+│   │       │   ├── 📄 Reports.vue       # Báo cáo tổng quan
+│   │       │   └── 📄 RevenueLineChart.vue # Biểu đồ doanh thu
+│   │       │
+│   │       ├── 📁 Sales/                # Module bán hàng
+│   │       │   └── 📄 Discounts.vue     # Quản lý giảm giá
+│   │       │
+│   │       ├── 📁 Shipments/            # Module vận chuyển
+│   │       │   ├── 📄 Shipments.vue     # Quản lý vận chuyển
+│   │       │   └── 📄 Reports_Shipments.vue # Báo cáo vận chuyển
+│   │       │
+│   │       └── 📁 Users/                # Module người dùng
+│   │           ├── 📄 Customer_groups.vue # Nhóm khách hàng
+│   │           └── 📄 CustomerList.vue   # Danh sách khách hàng
+│   │
+│   └── 📄 .gitignore                     # File loại trừ Git
