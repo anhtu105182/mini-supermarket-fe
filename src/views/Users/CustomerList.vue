@@ -2,7 +2,7 @@
   <div class="page-container">
     <div class="page-header">
       <h1 class="page-title">Danh sách khách hàng</h1>
-      <el-button type="primary" :icon="Plus" @click="addCustomer">
+      <el-button type="primary" :icon="Plus" @click="openDrawer()">
         Thêm khách hàng
       </el-button>
     </div>
@@ -18,10 +18,23 @@
           @clear="onSearch"
         />
         <div v-if="!isMobile" class="advanced-filters">
-          <el-button
-            >Nhóm khách hàng
-            <el-icon class="el-icon--right"><ArrowDown /></el-icon
-          ></el-button>
+          <el-dropdown @command="handleGroupFilter">
+            <el-button>
+              {{ selectedGroup || "Nhóm khách hàng" }}
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item :command="null">Tất cả</el-dropdown-item>
+                <el-dropdown-item
+                  v-for="group in customerGroups"
+                  :key="group"
+                  :command="group"
+                  >{{ group }}</el-dropdown-item
+                >
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button
             >Tag <el-icon class="el-icon--right"><PriceTag /></el-icon
           ></el-button>
@@ -57,9 +70,22 @@
           </template>
         </el-table-column>
         <el-table-column label="Thao tác" width="120" align="center">
-          <template #default>
+          <template #default="scope">
             <div class="action-buttons">
-              <el-button size="small" :icon="Edit" circle />
+              <el-button
+                size="small"
+                :icon="Edit"
+                circle
+                @click="openDrawer(scope.row)"
+              />
+              <el-button
+                size="small"
+                :icon="Delete"
+                circle
+                type="danger"
+                plain
+                @click="handleDelete(scope.row)"
+              />
             </div>
           </template>
         </el-table-column>
@@ -93,10 +119,30 @@
             </div>
           </div>
           <div class="card-footer">
-            <el-button size="small" :icon="Edit" text bg>Chỉnh sửa</el-button>
+            <el-button
+              size="small"
+              :icon="Edit"
+              text
+              bg
+              @click="openDrawer(item)"
+              >Chỉnh sửa</el-button
+            >
+            <el-button
+              size="small"
+              :icon="Delete"
+              text
+              bg
+              type="danger"
+              @click="handleDelete(item)"
+              >Xóa</el-button
+            >
           </div>
         </div>
       </div>
+      <el-empty
+        v-if="pagedCustomers.length === 0"
+        description="Không có khách hàng nào"
+      />
     </div>
 
     <div class="pagination-container">
@@ -109,18 +155,53 @@
         v-model:current-page="currentPage"
       />
     </div>
+
+    <el-drawer
+      v-model="drawerVisible"
+      :title="isEditMode ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới'"
+      direction="rtl"
+      size="450px"
+    >
+      <el-form :model="form" label-position="top">
+        <el-form-item label="Tên khách hàng" required>
+          <el-input v-model="form.name" placeholder="Nhập tên khách hàng" />
+        </el-form-item>
+        <el-form-item label="Số điện thoại" required>
+          <el-input v-model="form.phone" placeholder="Nhập số điện thoại" />
+        </el-form-item>
+        <el-form-item label="Email">
+          <el-input v-model="form.email" placeholder="Nhập email" />
+        </el-form-item>
+        <el-form-item label="Nhóm khách hàng">
+          <el-select v-model="form.group" placeholder="Chọn nhóm khách hàng">
+            <el-option
+              v-for="group in customerGroups"
+              :key="group"
+              :label="group"
+              :value="group"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="drawerVisible = false">Hủy</el-button>
+        <el-button type="primary" @click="handleSave">Lưu</el-button>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
 import {
   Search,
   Plus,
   Edit,
+  Delete,
   ArrowDown,
   PriceTag,
 } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 // --- RESPONSIVE STATE ---
 const isMobile = ref(false);
@@ -131,7 +212,7 @@ onMounted(() => {
   checkScreenSize();
   window.addEventListener("resize", checkScreenSize);
 });
-onBeforeUnmount(() => {
+onUnmounted(() => {
   window.removeEventListener("resize", checkScreenSize);
 });
 
@@ -139,6 +220,7 @@ onBeforeUnmount(() => {
 const search = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
+const selectedGroup = ref(null);
 
 const customers = ref([
   {
@@ -197,18 +279,42 @@ const customers = ref([
   },
 ]);
 
+// --- FORM STATE & DRAWER ---
+const drawerVisible = ref(false);
+const isEditMode = ref(false);
+const form = reactive({
+  id: null,
+  name: "",
+  phone: "",
+  email: "",
+  group: "Khách mới",
+});
+
 const formatCurrency = (value) =>
   value.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 
+const customerGroups = computed(() => {
+  const groups = customers.value.map((c) => c.group);
+  return [...new Set(groups)]; // Lấy các nhóm duy nhất
+});
+
 const filteredCustomers = computed(() => {
-  if (!search.value) return customers.value;
-  const searchTerm = search.value.toLowerCase();
-  return customers.value.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchTerm) ||
-      item.phone.includes(searchTerm) ||
-      item.email.toLowerCase().includes(searchTerm)
-  );
+  let result = customers.value;
+  // Lọc theo từ khóa tìm kiếm
+  if (search.value) {
+    const searchTerm = search.value.toLowerCase();
+    result = result.filter(
+      (item) =>
+        item.name.toLowerCase().includes(searchTerm) ||
+        item.phone.includes(searchTerm) ||
+        item.email.toLowerCase().includes(searchTerm)
+    );
+  }
+  // Lọc theo nhóm khách hàng
+  if (selectedGroup.value) {
+    result = result.filter((item) => item.group === selectedGroup.value);
+  }
+  return result;
 });
 
 const pagedCustomers = computed(() => {
@@ -219,12 +325,76 @@ const pagedCustomers = computed(() => {
 const onSearch = () => {
   currentPage.value = 1;
 };
-const addCustomer = () => {};
+
+const handleGroupFilter = (group) => {
+  selectedGroup.value = group;
+  currentPage.value = 1;
+};
+
+// --- CRUD FUNCTIONS ---
+const openDrawer = (customer = null) => {
+  if (customer) {
+    isEditMode.value = true;
+    Object.assign(form, customer);
+  } else {
+    isEditMode.value = false;
+    Object.assign(form, {
+      // Reset form
+      id: null,
+      name: "",
+      phone: "",
+      email: "",
+      group: "Khách mới",
+    });
+  }
+  drawerVisible.value = true;
+};
+
+const handleSave = () => {
+  if (!form.name || !form.phone) {
+    ElMessage.error("Vui lòng nhập Tên và Số điện thoại.");
+    return;
+  }
+
+  if (isEditMode.value) {
+    // Update logic
+    const index = customers.value.findIndex((c) => c.id === form.id);
+    if (index !== -1) {
+      customers.value[index] = { ...form };
+    }
+  } else {
+    // Create logic
+    customers.value.unshift({
+      ...form,
+      id: Date.now(), // Tạo ID tạm thời
+      totalSpent: 0,
+      avatarUrl: "",
+    });
+  }
+
+  ElMessage.success("Lưu khách hàng thành công!");
+  drawerVisible.value = false;
+};
+
+const handleDelete = (customer) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc muốn xóa khách hàng "${customer.name}" không?`,
+    "Xác nhận xóa",
+    {
+      confirmButtonText: "Đồng ý",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(() => {
+      customers.value = customers.value.filter((c) => c.id !== customer.id);
+      ElMessage.success("Xóa thành công");
+    })
+    .catch(() => {});
+};
 </script>
 
 <style scoped>
-/* @import "./responsive-style.css"; Nhớ import file CSS chung */
-
 .customer-info {
   display: flex;
   align-items: center;
@@ -283,6 +453,10 @@ const addCustomer = () => {};
   background-color: #ffffff;
   border-bottom: 1px solid #e5e7eb;
 }
+.advanced-filters {
+  display: flex;
+  gap: 12px;
+}
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -296,13 +470,13 @@ const addCustomer = () => {};
 
 /* ----- MOBILE CARD STYLES ----- */
 .mobile-card-list {
-  padding: 16px;
+  padding: 0 16px;
 }
 .mobile-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  margin-bottom: 16px;
+  margin-block: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
@@ -310,9 +484,6 @@ const addCustomer = () => {};
   padding: 12px 16px;
   border-bottom: 1px solid #f3f4f6;
   font-weight: 600;
-}
-.card-title {
-  color: #111827;
 }
 .card-body {
   padding: 12px 16px;
@@ -347,10 +518,15 @@ const addCustomer = () => {};
   border-radius: 6px;
   font-weight: 500;
 }
-.page-container :deep(.el-input__wrapper) {
+.page-container :deep(.el-input__wrapper),
+.page-container :deep(.el-select .el-select__wrapper) {
   border-radius: 6px;
   box-shadow: none !important;
   border: 1px solid #d1d5db;
+  width: 100%;
+}
+.page-container :deep(.el-select) {
+  width: 100%;
 }
 
 /* ----- DESKTOP OVERRIDES ----- */
@@ -372,7 +548,7 @@ const addCustomer = () => {};
     border-color: #2563eb;
   }
   .page-container :deep(.el-input) {
-    max-width: 400px;
+    width: 400px;
   }
   .page-container :deep(.el-table th) {
     background-color: #f9fafb !important;

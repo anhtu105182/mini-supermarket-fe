@@ -9,6 +9,7 @@
         </el-button>
       </div>
     </div>
+
     <div class="filter-card">
       <el-date-picker
         v-model="filters.dateRange"
@@ -61,6 +62,7 @@
 
     <div class="table-container">
       <el-table
+        v-if="!isMobile"
         :data="pagedTransactions"
         v-loading="isLoading"
         style="width: 100%"
@@ -91,22 +93,24 @@
         </el-table-column>
         <el-table-column prop="employee" label="Người thực hiện" width="150" />
         <el-table-column label="Thao tác" width="120" align="center">
-          <div class="action-buttons">
-            <el-button
-              size="small"
-              :icon="Edit"
-              circle
-              @click="openDrawer(scope.row)"
-            />
-            <el-button
-              size="small"
-              :icon="Delete"
-              type="danger"
-              circle
-              plain
-              @click="handleDelete(scope.row)"
-            />
-          </div>
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :icon="Edit"
+                circle
+                @click="openDrawer(scope.row)"
+              />
+              <el-button
+                size="small"
+                :icon="Delete"
+                type="danger"
+                circle
+                plain
+                @click="handleDelete(scope.row)"
+              />
+            </div>
+          </template>
         </el-table-column>
 
         <template #append>
@@ -133,6 +137,61 @@
         </template>
       </el-table>
 
+      <div v-if="isMobile && !isLoading" class="mobile-card-list">
+        <div
+          v-for="item in pagedTransactions"
+          :key="item.id"
+          class="mobile-card"
+        >
+          <div class="card-header">
+            <span class="card-title">{{ item.code }}</span>
+            <el-tag
+              :type="item.type === 'thu' ? 'success' : 'danger'"
+              size="small"
+            >
+              {{ item.type === "thu" ? "Phiếu thu" : "Phiếu chi" }}
+            </el-tag>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="card-label">Số tiền:</span>
+              <span
+                class="card-value"
+                :class="item.type === 'thu' ? 'income' : 'expense'"
+              >
+                {{ item.type === "thu" ? "+" : "-" }}
+                {{ formatCurrency(item.amount) }}
+              </span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Diễn giải:</span>
+              <span class="card-value">{{ item.description }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Thời gian:</span>
+              <span class="card-value">{{ item.datetime }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Người thực hiện:</span>
+              <span class="card-value">{{ item.employee }}</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <el-button size="small" text :icon="Edit" @click="openDrawer(item)"
+              >Sửa</el-button
+            >
+            <el-button
+              size="small"
+              text
+              type="danger"
+              :icon="Delete"
+              @click="handleDelete(item)"
+              >Xóa</el-button
+            >
+          </div>
+        </div>
+      </div>
+
       <el-empty
         v-if="!isLoading && pagedTransactions.length === 0"
         description="Không có giao dịch nào"
@@ -155,7 +214,7 @@
       v-model="drawerVisible"
       :title="isEditMode ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch mới'"
       direction="rtl"
-      size="450px"
+      :size="drawerSize"
     >
       <el-form :model="form" label-position="top" ref="formRef">
         <el-form-item label="Loại giao dịch" prop="type">
@@ -166,9 +225,10 @@
         </el-form-item>
         <el-form-item label="Số tiền" prop="amount">
           <el-input
-            v-model.number="form.amount"
-            type="number"
+            v-model="formattedAmount"
+            type="text"
             placeholder="Nhập số tiền"
+            clearable
           />
         </el-form-item>
         <el-form-item label="Diễn giải" prop="description">
@@ -204,11 +264,27 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from "vue";
+import { ref, computed, onMounted, onUnmounted, reactive } from "vue";
 import { Search, Plus, Download, Edit, Delete } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 
-const isMobile = ref(false);
+// --- STATE QUẢN LÝ RESPONSIVE ---
+const isMobile = ref(window.innerWidth < 768);
+const drawerSize = computed(() => (isMobile.value ? "95%" : "450px"));
+
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+
+onMounted(() => {
+  window.addEventListener("resize", handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", handleResize);
+});
+// --- KẾT THÚC STATE RESPONSIVE ---
+
 const isLoading = ref(true);
 const transactions = ref([]);
 const currentPage = ref(1);
@@ -225,10 +301,31 @@ const filters = reactive({
 const form = reactive({
   id: null,
   type: "thu",
-  amount: null,
+  amount: null, // Giá trị này sẽ luôn là một con số (number)
   description: "",
   paymentMethod: "Tiền mặt",
   employee: "Admin",
+});
+
+// TẠO COMPUTED PROPERTY ĐỂ ĐỊNH DẠNG SỐ TIỀN
+const formattedAmount = computed({
+  // Hàm GET: Định dạng số để hiển thị
+  get() {
+    if (form.amount === null || form.amount === undefined) {
+      return "";
+    }
+    // Dùng toLocaleString để tự động thêm dấu phân tách hàng nghìn
+    return form.amount.toLocaleString("vi-VN");
+  },
+  // Hàm SET: Chuyển đổi chuỗi nhập vào thành số để lưu trữ
+  set(newValue) {
+    // 1. Loại bỏ tất cả các ký tự không phải là số
+    const numericValue = newValue.replace(/[^0-9]/g, "");
+
+    // 2. Chuyển chuỗi số thành kiểu number
+    // Nếu chuỗi rỗng thì gán là null, ngược lại thì chuyển thành số nguyên
+    form.amount = numericValue === "" ? null : parseInt(numericValue, 10);
+  },
 });
 
 const sampleTransactions = [
@@ -303,6 +400,7 @@ const openDrawer = (transaction = null) => {
     Object.assign(form, transaction);
   } else {
     isEditMode.value = false;
+    // Reset form về trạng thái ban đầu
     Object.assign(form, {
       id: null,
       type: "thu",
@@ -317,6 +415,15 @@ const openDrawer = (transaction = null) => {
 
 const handleSave = () => {
   // Thêm logic validation ở đây
+  if (!form.amount || form.amount <= 0) {
+    ElMessage.error("Vui lòng nhập số tiền hợp lệ.");
+    return;
+  }
+  if (!form.description) {
+    ElMessage.error("Vui lòng nhập diễn giải.");
+    return;
+  }
+
   if (isEditMode.value) {
     const index = transactions.value.findIndex((t) => t.id === form.id);
     if (index !== -1) transactions.value[index] = { ...form };
@@ -324,8 +431,16 @@ const handleSave = () => {
     transactions.value.unshift({
       ...form,
       id: Date.now(),
-      code: (form.type === "thu" ? "PT" : "PC") + "004",
-      datetime: new Date().toLocaleString("vi-VN"),
+      code:
+        (form.type === "thu" ? "PT" : "PC") +
+        `${transactions.value.length + 1}`.padStart(3, "0"),
+      datetime: new Date().toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     });
   }
   ElMessage.success("Lưu giao dịch thành công!");
@@ -351,7 +466,13 @@ const handleDelete = (transaction) => {
     .catch(() => {});
 };
 
+// onMounted ban đầu đã có 1 cái ở trên để add event listener
+// Chúng ta sẽ gộp logic vào chung một chỗ
 onMounted(() => {
+  // Thêm event listener
+  window.addEventListener("resize", handleResize);
+
+  // Tải dữ liệu giả
   setTimeout(() => {
     transactions.value = sampleTransactions;
     isLoading.value = false;
@@ -360,16 +481,46 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* @import "./responsive-style.css"; */
+/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+.page-container {
+  padding: 16px;
+  background-color: #f9fafb;
+  font-family: "Inter", sans-serif;
+  min-height: 100vh;
+  /* width: 1150px; */
+}
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+.action-buttons-group {
+  display: flex;
+  gap: 12px;
+}
+
+/* ----- FILTER & STATS ----- */
 .filter-card {
-  padding: 20px;
+  padding: 16px;
   background: #fff;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   margin-bottom: 24px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column; /* [REPONSIVE] Mặc định xếp dọc cho mobile */
   gap: 16px;
+}
+.filter-card > .el-select,
+.filter-card > .el-date-picker {
+  width: 100%; /* [REPONSIVE] Cho input chiếm toàn bộ chiều rộng */
 }
 .stats-grid {
   display: grid;
@@ -401,11 +552,25 @@ onMounted(() => {
 .closing-balance {
   color: #2563eb;
 }
+
+/* ----- TABLE & PAGINATION ----- */
+.table-container {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pagination-container {
+  display: flex;
+  justify-content: center; /* [REPONSIVE] Căn giữa cho mobile */
+  margin-top: 24px;
+}
 .table-footer-summary {
   display: flex;
   justify-content: flex-end;
-  gap: 40px;
-  padding: 16px 24px;
+  flex-wrap: wrap; /* [REPONSIVE] Cho phép xuống dòng nếu không đủ chỗ */
+  gap: 20px 40px;
+  padding: 16px;
   font-size: 0.95rem;
   background-color: #f8fafc;
 }
@@ -415,48 +580,6 @@ onMounted(() => {
 .summary-item strong {
   color: #111827;
 }
-
-/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
-.page-container {
-  padding: 16px;
-  background-color: #f9fafb;
-  font-family: "Inter", sans-serif;
-  min-height: 100vh;
-}
-.page-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-}
-
-/* ----- CONTAINERS & BARS ----- */
-.table-container {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.filters-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-}
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
 .action-buttons {
   display: flex;
   gap: 8px;
@@ -465,20 +588,22 @@ onMounted(() => {
 
 /* ----- MOBILE CARD STYLES ----- */
 .mobile-card-list {
-  padding: 16px;
+  padding: 0;
 }
 .mobile-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid #e5e7eb;
   overflow: hidden;
+}
+.mobile-card:last-child {
+  border-bottom: none;
 }
 .card-header {
   padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
   font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .card-title {
   color: #111827;
@@ -492,23 +617,25 @@ onMounted(() => {
 .card-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 16px;
   font-size: 0.9rem;
 }
 .card-label {
   color: #6b7280;
+  flex-shrink: 0; /* Ngăn label bị co lại */
 }
 .card-value {
   color: #111827;
   font-weight: 500;
   text-align: right;
+  word-break: break-word;
 }
 .card-footer {
-  padding: 8px 16px;
-  background-color: #f9fafb;
+  padding: 4px 8px;
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 4px;
 }
 
 /* ----- ELEMENT PLUS CUSTOMIZATION ----- */
@@ -516,13 +643,14 @@ onMounted(() => {
   border-radius: 6px;
   font-weight: 500;
 }
-.page-container :deep(.el-input__wrapper) {
+.page-container :deep(.el-input__wrapper),
+.page-container :deep(.el-select__wrapper) {
   border-radius: 6px;
   box-shadow: none !important;
   border: 1px solid #d1d5db;
 }
 
-/* ----- DESKTOP OVERRIDES ----- */
+/* ----- DESKTOP OVERRIDES (>= 768px) ----- */
 @media (min-width: 768px) {
   .page-container {
     padding: 24px 32px;
@@ -530,18 +658,17 @@ onMounted(() => {
   .page-title {
     font-size: 1.75rem;
   }
-  .filters-bar {
-    padding: 16px 20px;
+  .filter-card {
+    flex-direction: row; /* Chuyển filter về dạng hàng ngang */
+    align-items: center;
+    flex-wrap: wrap;
   }
   .pagination-container {
-    justify-content: flex-end;
+    justify-content: flex-end; /* Căn phải cho desktop */
   }
   .page-container :deep(.el-button--primary) {
     background-color: #2563eb;
     border-color: #2563eb;
-  }
-  .page-container :deep(.el-input) {
-    max-width: 400px;
   }
   .page-container :deep(.el-table th) {
     background-color: #f9fafb !important;

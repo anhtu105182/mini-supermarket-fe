@@ -1,474 +1,567 @@
 <template>
-  <div class="orders-page">
-    <div class="orders-header">
-      <h1 class="orders-title">Danh sách nhà cung cấp</h1>
-      <!-- <div class="export-file" @click="showExportModal = true">Xuất file</div> -->
+  <div class="page-container">
+    <div class="page-header">
+      <h1 class="page-title">Nhà cung cấp</h1>
+      <el-button type="primary" :icon="Plus" @click="openDialog()">
+        Thêm nhà cung cấp
+      </el-button>
     </div>
-    <div class="orders-table">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-            <th><div class="skeleton-header"></div></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="i in 3" :key="i">
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-            <td><div class="skeleton-row"></div></td>
-          </tr>
-        </tbody>
-      </table>
-      <EmptyState
-        icon="https://cdn-icons-png.flaticon.com/512/1048/1048953.png"
-        title="Cửa hàng của bạn chưa có nhà cung cấp"
-        description="Tạo mới nhà cung cấp để quản lý và tạo đơn nhập hàng từ nhà cung cấp."
+
+    <div class="table-container">
+      <div class="filters-bar">
+        <el-input
+          v-model="search"
+          placeholder="Tìm theo tên, mã, SĐT nhà cung cấp..."
+          clearable
+          :prefix-icon="Search"
+        />
+        <el-select
+          v-if="!isMobile"
+          v-model="statusFilter"
+          placeholder="Trạng thái"
+          clearable
+          style="width: 200px"
+        >
+          <el-option label="Tất cả trạng thái" value="all"></el-option>
+          <el-option label="Đang hợp tác" value="Đang hợp tác"></el-option>
+          <el-option label="Ngừng hợp tác" value="Ngừng hợp tác"></el-option>
+        </el-select>
+      </div>
+
+      <el-table
+        v-if="!isMobile"
+        :data="pagedSuppliers"
+        v-loading="isLoading"
+        style="width: 100%"
       >
-        <template #actions>
-          <button class="orders-add-btn-import" @click="showExportModal = true">
-            <i class="fa-solid fa-upload"></i>Nhập file
-          </button>
-          <button class="orders-add-btn">
-            <i class="fa fa-plus-circle"></i> Thêm nhà cung cấp
-          </button>
-        </template>
-      </EmptyState>
-    </div>
-    <div class="orders-footer">
-      Tìm hiểu về
-      <a href="#" class="orders-link" style="margin-left: 5px">Nhà cung cấp </a>
-    </div>
-    <!-- Modal Nhập file -->
-    <div
-      v-if="showExportModal"
-      class="modal-overlay"
-      @click.self="showExportModal = false"
-    >
-      <div class="modal-import">
-        <div class="modal-header">
-          <span>Nhập file danh sách đơn đặt hàng nhập</span>
-          <button class="modal-close" @click="showExportModal = false">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-row">
-            <div class="modal-field">
-              <label>Chi nhánh tạo đơn</label>
-              <select v-model="selectedBranch">
-                <option value="">Chọn chi nhánh</option>
-                <option v-for="b in branches" :key="b" :value="b">
-                  {{ b }}
-                </option>
-              </select>
+        <el-table-column label="Nhà cung cấp" min-width="250">
+          <template #default="scope">
+            <div class="supplier-info">
+              <div class="supplier-name">{{ scope.row.name }}</div>
+              <div class="supplier-code">Mã: {{ scope.row.code }}</div>
             </div>
-            <div class="modal-field">
-              <label>Nhà cung cấp</label>
-              <select v-model="selectedSupplier">
-                <option value="">Chọn nhà cung cấp</option>
-                <option v-for="s in suppliers" :key="s" :value="s">
-                  {{ s }}
-                </option>
-              </select>
+          </template>
+        </el-table-column>
+        <el-table-column label="Thông tin liên hệ" min-width="220">
+          <template #default="scope">
+            <div>{{ scope.row.contactPerson }}</div>
+            <div class="supplier-contact">{{ scope.row.phone }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="address" label="Địa chỉ" min-width="250" />
+        <el-table-column label="Trạng thái" width="160" align="center">
+          <template #default="scope">
+            <el-tag
+              :type="getStatusInfo(scope.row.status).type"
+              effect="light"
+              size="small"
+            >
+              {{ scope.row.status }}</el-tag
+            >
+          </template>
+        </el-table-column>
+        <el-table-column label="Thao tác" width="180" align="center">
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :icon="Edit"
+                text
+                bg
+                @click="openDialog(scope.row)"
+                >Sửa</el-button
+              >
+              <el-button
+                size="small"
+                :icon="Delete"
+                text
+                bg
+                type="danger"
+                @click="handleDelete(scope.row)"
+                >Xóa</el-button
+              >
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div v-else class="mobile-card-list">
+        <div v-for="item in pagedSuppliers" :key="item.id" class="mobile-card">
+          <div class="card-header">
+            <div class="supplier-info">
+              <div class="supplier-name">{{ item.name }}</div>
+              <div class="supplier-code">Mã: {{ item.code }}</div>
+            </div>
+            <el-tag
+              :type="getStatusInfo(item.status).type"
+              effect="light"
+              size="small"
+              >{{ item.status }}</el-tag
+            >
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="card-label">Người liên hệ</span>
+              <span class="card-value">{{ item.contactPerson }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Điện thoại</span>
+              <span class="card-value">{{ item.phone }}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">Địa chỉ</span>
+              <span class="card-value">{{ item.address }}</span>
             </div>
           </div>
-          <div
-            class="modal-dropzone"
-            @dragover.prevent
-            @drop.prevent="handleDrop"
-          >
-            <div class="modal-dropzone-content">
-              <i
-                class="fa fa-cloud-upload"
-                style="font-size: 2.2rem; color: #2196f3"
-              ></i>
-              <div>
-                Kéo thả file vào đây hoặc
-                <label class="modal-upload-label">
-                  <input
-                    type="file"
-                    style="display: none"
-                    @change="handleFileChange"
-                  />
-                  <span class="modal-upload-link">tải lên từ thiết bị</span>
-                </label>
-              </div>
-              <div class="modal-dropzone-desc">
-                (Tối đa 3MB, định dạng .xls hoặc .xlsx)
-              </div>
-              <div v-if="fileName" class="modal-file-name">
-                <i class="fa fa-file-excel" style="color: #43a047"></i>
-                {{ fileName }}
-              </div>
-            </div>
+          <div class="card-footer">
+            <el-button
+              size="small"
+              :icon="Delete"
+              text
+              bg
+              type="danger"
+              @click="handleDelete(item)"
+              >Xóa</el-button
+            >
+            <el-button
+              size="small"
+              :icon="Edit"
+              text
+              bg
+              @click="openDialog(item)"
+              >Sửa</el-button
+            >
           </div>
-          <div class="modal-sample-link">
-            <a href="#" @click.prevent="downloadSample">
-              <i class="fa fa-download"></i> Tải file dữ liệu mẫu
-            </a>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn cancel" @click="showExportModal = false">
-            Hủy
-          </button>
-          <button
-            class="modal-btn import"
-            :disabled="!fileName"
-            @click="importFile"
-          >
-            Nhập file
-          </button>
         </div>
       </div>
+
+      <el-empty
+        v-if="!isLoading && pagedSuppliers.length === 0"
+        description="Không có nhà cung cấp nào"
+      />
     </div>
+
+    <div class="pagination-container">
+      <el-pagination
+        v-if="filteredSuppliers.length > 0"
+        :small="isMobile"
+        background
+        layout="total, prev, pager, next"
+        :total="filteredSuppliers.length"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+      />
+    </div>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="isEditMode ? 'Chỉnh sửa nhà cung cấp' : 'Thêm nhà cung cấp mới'"
+      width="600px"
+      :fullscreen="isMobile"
+    >
+      <el-form :model="form" label-position="top">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="Tên nhà cung cấp" required>
+              <el-input
+                v-model="form.name"
+                placeholder="Nhập tên nhà cung cấp"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="Mã nhà cung cấp">
+              <el-input v-model="form.code" placeholder="Tự tạo nếu để trống" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="Người liên hệ" required>
+              <el-input
+                v-model="form.contactPerson"
+                placeholder="Nhập tên người liên hệ"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="Số điện thoại" required>
+              <el-input v-model="form.phone" placeholder="Nhập số điện thoại" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="Email">
+          <el-input v-model="form.email" placeholder="Nhập email" />
+        </el-form-item>
+        <el-form-item label="Địa chỉ">
+          <el-input
+            v-model="form.address"
+            type="textarea"
+            :rows="2"
+            placeholder="Nhập địa chỉ"
+          />
+        </el-form-item>
+        <el-form-item label="Trạng thái">
+          <el-select v-model="form.status" placeholder="Chọn trạng thái">
+            <el-option label="Đang hợp tác" value="Đang hợp tác" />
+            <el-option label="Ngừng hợp tác" value="Ngừng hợp tác" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">Hủy</el-button>
+        <el-button type="primary" @click="handleSave">Lưu</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import EmptyState from "@/components/EmptyState.vue";
-import { ref } from "vue";
-const showExportModal = ref(false);
-const selectedBranch = ref("");
-const selectedSupplier = ref("");
-const fileName = ref("");
-const branches = ["Chi nhánh 1", "Chi nhánh 2"];
-const suppliers = ["Nhà cung cấp A", "Nhà cung cấp B"];
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { Search, Plus, Edit, Delete } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 
-function handleFileChange(e) {
-  const file = e.target.files[0];
-  if (file) fileName.value = file.name;
-}
-function handleDrop(e) {
-  const file = e.dataTransfer.files[0];
-  if (file) fileName.value = file.name;
-}
-function downloadSample() {
-  // Tải file mẫu, có thể thay bằng đường dẫn thực tế
-  window.open("/sample.xlsx", "_blank");
-}
-function importFile() {
-  // Xử lý nhập file ở đây
-  showExportModal.value = false;
-  fileName.value = "";
-}
+// --- STATE ---
+const isMobile = ref(false);
+const isLoading = ref(true);
+const search = ref("");
+const statusFilter = ref("all");
+const currentPage = ref(1);
+const pageSize = 10;
+const suppliers = ref([]);
+
+// --- DIALOG & FORM STATE ---
+const dialogVisible = ref(false);
+const isEditMode = ref(false);
+const form = reactive({
+  id: null,
+  name: "",
+  code: "",
+  contactPerson: "",
+  phone: "",
+  email: "",
+  address: "",
+  status: "Đang hợp tác",
+});
+
+// --- SAMPLE DATA ---
+const sampleSuppliers = [
+  {
+    id: 1,
+    name: "Công ty TNHH An Khang",
+    code: "NCC001",
+    contactPerson: "Nguyễn Văn An",
+    phone: "0901234567",
+    email: "ankhang@example.com",
+    address: "123 Lê Lợi, Quận 1, TP. HCM",
+    status: "Đang hợp tác",
+  },
+  {
+    id: 2,
+    name: "Nhà sách Fahasa",
+    code: "NCC002",
+    contactPerson: "Trần Thị Bích",
+    phone: "0918765432",
+    email: "fahasa@example.com",
+    address: "456 Nguyễn Huệ, Quận 1, TP. HCM",
+    status: "Đang hợp tác",
+  },
+  {
+    id: 3,
+    name: "Công ty văn phòng phẩm Hưng Thịnh",
+    code: "NCC003",
+    contactPerson: "Lê Hoàng Hưng",
+    phone: "0987654321",
+    email: "vpphungthinh@example.com",
+    address: "789 CMT8, Quận 3, TP. HCM",
+    status: "Đang hợp tác",
+  },
+  {
+    id: 4,
+    name: "Nhà phân phối thiết bị ABC",
+    code: "NCC004",
+    contactPerson: "Phạm Thị Cẩm",
+    phone: "0934567890",
+    email: "thietbiabc@example.com",
+    address: "321 Xô Viết Nghệ Tĩnh, Bình Thạnh, TP.HCM",
+    status: "Ngừng hợp tác",
+  },
+];
+
+// --- HELPERS ---
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+const getStatusInfo = (status) => {
+  if (status === "Đang hợp tác") return { type: "success" };
+  if (status === "Ngừng hợp tác") return { type: "info" };
+  return { type: "primary" };
+};
+
+// --- COMPUTED ---
+const filteredSuppliers = computed(() => {
+  return suppliers.value.filter((item) => {
+    const searchMatch =
+      !search.value ||
+      item.name.toLowerCase().includes(search.value.toLowerCase()) ||
+      item.code.toLowerCase().includes(search.value.toLowerCase()) ||
+      item.phone.includes(search.value);
+
+    const statusMatch =
+      statusFilter.value === "all" || item.status === statusFilter.value;
+
+    return searchMatch && statusMatch;
+  });
+});
+
+const pagedSuppliers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredSuppliers.value.slice(start, start + pageSize);
+});
+
+// --- ACTIONS ---
+const openDialog = (supplier = null) => {
+  if (supplier) {
+    isEditMode.value = true;
+    Object.assign(form, supplier);
+  } else {
+    isEditMode.value = false;
+    Object.assign(form, {
+      id: null,
+      name: "",
+      code: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+      status: "Đang hợp tác",
+    });
+  }
+  dialogVisible.value = true;
+};
+
+const handleSave = () => {
+  if (!form.name || !form.contactPerson || !form.phone) {
+    ElMessage.error(
+      "Vui lòng điền các trường bắt buộc: Tên, Người liên hệ, SĐT."
+    );
+    return;
+  }
+
+  if (isEditMode.value) {
+    const index = suppliers.value.findIndex((s) => s.id === form.id);
+    if (index !== -1) {
+      suppliers.value[index] = { ...form };
+    }
+  } else {
+    let newCode = form.code;
+    if (!newCode) {
+      const nextId = Math.max(0, ...suppliers.value.map((s) => s.id)) + 1;
+      newCode = "NCC" + String(nextId).padStart(3, "0");
+    }
+    suppliers.value.unshift({
+      ...form,
+      id: Date.now(), // Use timestamp for unique ID in demo
+      code: newCode,
+    });
+  }
+  ElMessage.success("Lưu nhà cung cấp thành công!");
+  dialogVisible.value = false;
+};
+
+const handleDelete = (supplier) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc muốn xóa nhà cung cấp "${supplier.name}" không?`,
+    "Xác nhận xóa",
+    { confirmButtonText: "Đồng ý", cancelButtonText: "Hủy", type: "warning" }
+  )
+    .then(() => {
+      suppliers.value = suppliers.value.filter((s) => s.id !== supplier.id);
+      ElMessage.success("Đã xóa nhà cung cấp.");
+    })
+    .catch(() => {});
+};
+
+// --- LIFECYCLE & WATCHERS ---
+watch([search, statusFilter], () => {
+  currentPage.value = 1;
+});
+
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  setTimeout(() => {
+    suppliers.value = sampleSuppliers;
+    isLoading.value = false;
+  }, 500);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", checkScreenSize);
+});
 </script>
 
 <style scoped>
-.orders-page {
-  padding: 24px 16px 0 16px;
-  background: #f7f7f9;
+/* GENERAL */
+.page-container {
+  padding: 16px;
+  background-color: #f9fafb;
+  font-family: "Inter", sans-serif;
   min-height: 100vh;
 }
-.orders-header {
+.page-header {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
 }
-.export-file {
-  background: #2196f3;
-  color: #fff;
-  padding: 8px 16px;
-  margin-right: 30px;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
 }
-.export-file:hover {
-  background: #1976d2;
+.table-container {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
 }
-.orders-title {
-  font-size: 2rem;
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* SUPPLIER INFO */
+.supplier-name {
   font-weight: 600;
-  margin-bottom: 18px;
-  color: #222;
-  margin-top: 0px;
+  color: #111827;
 }
-.orders-table {
+.supplier-code,
+.supplier-contact {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* MOBILE CARD STYLES */
+.mobile-card-list {
+  padding: 16px;
+}
+.mobile-card {
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  padding: 24px 0 48px 0;
-  min-height: 500px;
-  position: relative;
-}
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin-bottom: 32px;
-}
-th,
-td {
-  padding: 8px 0;
-}
-.skeleton-header {
-  height: 18px;
-  width: 120px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.5;
-}
-.skeleton-row {
-  height: 16px;
-  width: 100px;
-  background: #f0f1f3;
-  border-radius: 6px;
-  opacity: 0.3;
-}
-.orders-empty {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.orders-empty-img {
-  width: 72px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   margin-bottom: 16px;
-  opacity: 0.95;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
-.orders-empty-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: #222;
-  text-align: center;
-}
-.orders-empty-desc {
-  color: #888;
-  margin-bottom: 18px;
-  text-align: center;
-}
-.orders-empty-actions {
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
   display: flex;
-  justify-content: center;
-  width: 100%;
-  gap: 16px;
-}
-.orders-add-btn {
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
 }
-.orders-add-btn:hover {
-  background: #1976d2;
-}
-.orders-add-btn-import {
-  background: #fbfdff;
-  color: #2196f3;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
-  transition: background 0.2s;
-  border: 1px solid #2196f3;
-}
-.orders-footer {
-  text-align: right;
-  margin-top: 18px;
-  color: #888;
-  font-size: 0.97rem;
-  display: flex;
-  justify-content: center;
-}
-.orders-link {
-  color: #2196f3;
-  text-decoration: underline;
-}
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  z-index: 9999;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.modal-import {
-  background: #fff;
-  border-radius: 10px;
-  min-width: 520px;
-  max-width: 98vw;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.13);
-  padding: 0;
-  animation: modalIn 0.18s;
+.card-body {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
-@keyframes modalIn {
-  from {
-    transform: translateY(-30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-.modal-header {
+.card-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 28px 10px 28px;
-  font-size: 1.18rem;
-  font-weight: 600;
-  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.9rem;
 }
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #888;
-  cursor: pointer;
-  margin-left: 10px;
+.card-label {
+  color: #6b7280;
 }
-.modal-body {
-  padding: 18px 28px 0 28px;
-}
-.modal-row {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-}
-.modal-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.modal-field label {
+.card-value {
+  color: #111827;
   font-weight: 500;
-  margin-bottom: 2px;
-  color: #222;
+  text-align: right;
 }
-.modal-field select {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #dbe3ea;
-  font-size: 1rem;
-  background: #fafbfc;
-}
-.modal-dropzone {
-  border: 2px dashed #b5c6d6;
-  border-radius: 8px;
-  background: #f7fafd;
-  padding: 32px 0;
-  text-align: center;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.modal-dropzone:hover {
-  border-color: #2196f3;
-}
-.modal-dropzone-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.modal-upload-label {
-  color: #2196f3;
-  cursor: pointer;
-  font-weight: 500;
-}
-.modal-upload-link {
-  color: #2196f3;
-  text-decoration: underline;
-  cursor: pointer;
-}
-.modal-dropzone-desc {
-  color: #888;
-  font-size: 0.97rem;
-}
-.modal-file-name {
-  margin-top: 6px;
-  color: #43a047;
-  font-size: 0.98rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.modal-sample-link {
-  margin: 12px 0 0 0;
-}
-.modal-sample-link a {
-  color: #2196f3;
-  text-decoration: underline;
-  font-size: 0.97rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.modal-footer {
+.card-footer {
+  padding: 8px 16px;
+  background-color: #f9fafb;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 18px 28px 18px 28px;
-  border-top: 1px solid #f0f0f0;
-  background: #fafbfc;
-  border-radius: 0 0 10px 10px;
+  gap: 8px;
 }
-.modal-btn {
-  min-width: 80px;
-  padding: 8px 18px;
+
+/* ELEMENT PLUS CUSTOMIZATION */
+.page-container :deep(.el-button) {
   border-radius: 6px;
-  border: none;
-  font-size: 1rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
 }
-.modal-btn.cancel {
-  background: #fff;
-  color: #2196f3;
-  border: 1px solid #2196f3;
+.page-container :deep(.el-input__wrapper),
+.page-container :deep(.el-select .el-select__wrapper) {
+  border-radius: 6px;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db;
 }
-.modal-btn.import {
-  background: #2196f3;
-  color: #fff;
-  border: none;
+.page-container :deep(.el-select) {
+  width: 100%;
 }
-.modal-btn.import:disabled {
-  background: #b5c6d6;
-  color: #fff;
-  cursor: not-allowed;
-}
-.modal-btn.import:hover:enabled {
-  background: #1976d2;
+
+/* DESKTOP OVERRIDES */
+@media (min-width: 768px) {
+  .page-container {
+    padding: 24px 32px;
+  }
+  .page-title {
+    font-size: 1.75rem;
+  }
+  .filters-bar {
+    padding: 16px 20px;
+  }
+  .pagination-container {
+    justify-content: flex-end;
+  }
+  .page-container :deep(.el-button--primary) {
+    background-color: #2563eb;
+    border-color: #2563eb;
+  }
+  .page-container :deep(.el-input) {
+    max-width: 400px;
+  }
+  .page-container :deep(.el-select) {
+    width: auto;
+  }
+  .page-container :deep(.el-table th) {
+    background-color: #f9fafb !important;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .page-container :deep(.el-table td.el-table__cell) {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 14px 0;
+  }
+  .page-container :deep(.el-table .el-table__row:hover > td) {
+    background-color: #f9fafb !important;
+  }
+  .page-container
+    :deep(
+      .el-pagination.is-background .el-pager li:not(.is-disabled).is-active
+    ) {
+    background-color: #2563eb;
+  }
 }
 </style>

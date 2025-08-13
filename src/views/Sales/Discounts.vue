@@ -42,7 +42,10 @@
         </el-table-column>
         <el-table-column label="Thời gian hiệu lực" width="250">
           <template #default="scope">
-            <span>{{ scope.row.startDate }} - {{ scope.row.endDate }}</span>
+            <span
+              >{{ formatDate(scope.row.startDate) }} -
+              {{ formatDate(scope.row.endDate) }}</span
+            >
           </template>
         </el-table-column>
         <el-table-column
@@ -52,23 +55,97 @@
           align="center"
         />
         <el-table-column label="Trạng thái" width="150" align="center">
-          <template #default="scope"
-            ><el-tag
+          <template #default="scope">
+            <el-tag
               :type="getStatusType(scope.row.status)"
               effect="light"
               size="small"
-              >{{ scope.row.status }}</el-tag
-            ></template
-          >
+            >
+              {{ scope.row.status }}</el-tag
+            >
+          </template>
         </el-table-column>
-        <el-table-column label="Thao tác" width="120" align="center">
-          <div class="action-buttons">
-            <el-button size="small" :icon="Edit" text bg>Sửa</el-button>
-          </div>
+        <el-table-column label="Thao tác" width="220" align="center">
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :icon="Edit"
+                text
+                bg
+                @click="editDiscount(scope.row)"
+                >Sửa</el-button
+              >
+              <el-button
+                v-if="scope.row.status === 'Đang diễn ra'"
+                size="small"
+                :icon="CircleClose"
+                text
+                bg
+                type="danger"
+                @click="deactivateDiscount(scope.row)"
+                >Kết thúc</el-button
+              >
+            </div>
+          </template>
         </el-table-column>
       </el-table>
 
-      <div v-else class="mobile-card-list"></div>
+      <div v-else class="mobile-card-list">
+        <div
+          v-for="item in pagedDiscounts"
+          :key="item.code"
+          class="mobile-card"
+        >
+          <div class="card-header">
+            <div class="discount-info">
+              <div class="discount-name">{{ item.name }}</div>
+              <div class="discount-code">
+                Mã: <strong>{{ item.code }}</strong>
+              </div>
+            </div>
+            <el-tag
+              :type="getStatusType(item.status)"
+              effect="light"
+              size="small"
+              >{{ item.status }}</el-tag
+            >
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="card-label">Hiệu lực</span>
+              <span class="card-value"
+                >{{ formatDate(item.startDate) }} -
+                {{ formatDate(item.endDate) }}</span
+              >
+            </div>
+            <div class="card-row">
+              <span class="card-label">Lượt sử dụng</span>
+              <span class="card-value">{{ item.usageCount }}</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <el-button
+              v-if="item.status === 'Đang diễn ra'"
+              size="small"
+              :icon="CircleClose"
+              text
+              bg
+              type="danger"
+              @click="deactivateDiscount(item)"
+              >Kết thúc</el-button
+            >
+            <el-button
+              size="small"
+              :icon="Edit"
+              text
+              bg
+              @click="editDiscount(item)"
+              >Sửa</el-button
+            >
+          </div>
+        </div>
+      </div>
 
       <el-empty
         v-if="!isLoading && pagedDiscounts.length === 0"
@@ -91,10 +168,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
-import { Search, Plus, Edit } from "@element-plus/icons-vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRouter } from "vue-router";
+import { Search, Plus, Edit, CircleClose } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 // --- STATE ---
+const router = useRouter();
 const isMobile = ref(false);
 const isLoading = ref(true);
 const search = ref("");
@@ -103,102 +183,76 @@ const currentPage = ref(1);
 const pageSize = 10;
 const discounts = ref([]);
 
-// --- DỮ LIỆU MẪU ---
+// --- DỮ LIỆU MẪU (đã bỏ status) ---
 const sampleDiscounts = [
   {
+    id: 1,
     name: "Giảm 20% tổng đơn hàng",
     code: "SALE20",
     startDate: "2025-08-01",
     endDate: "2025-08-31",
     usageCount: 152,
-    status: "Đang diễn ra",
   },
   {
+    id: 2,
     name: "Freeship cho đơn từ 500k",
     code: "FREESHIP500",
     startDate: "2025-08-01",
     endDate: "2025-08-31",
     usageCount: 89,
-    status: "Đang diễn ra",
   },
   {
+    id: 3,
     name: "Lễ Quốc Khánh - Giảm 50k",
-    code: " mung2thang9",
+    code: "MUNG2THANG9",
     startDate: "2025-09-01",
     endDate: "2025-09-02",
     usageCount: 0,
-    status: "Sắp diễn ra",
   },
   {
+    id: 4,
     name: "Chào hè - Giảm 15%",
     code: "SUMMER15",
     startDate: "2025-06-01",
     endDate: "2025-07-31",
     usageCount: 340,
-    status: "Đã kết thúc",
   },
   {
+    id: 5,
     name: "Giảm 100k cho khách hàng VIP",
     code: "VIP100K",
     startDate: "2025-01-01",
     endDate: "2025-12-31",
     usageCount: 25,
-    status: "Đang diễn ra",
   },
-  {
-    name: "Giảm 20% tổng đơn hàng",
-    code: "SALE20",
-    startDate: "2025-08-01",
-    endDate: "2025-08-31",
-    usageCount: 152,
-    status: "Đang diễn ra",
-  },
-  {
-    name: "Freeship cho đơn từ 500k",
-    code: "FREESHIP500",
-    startDate: "2025-08-01",
-    endDate: "2025-08-31",
-    usageCount: 89,
-    status: "Đang diễn ra",
-  },
-  {
-    name: "Lễ Quốc Khánh - Giảm 50k",
-    code: " mung2thang9",
-    startDate: "2025-09-01",
-    endDate: "2025-09-02",
-    usageCount: 0,
-    status: "Sắp diễn ra",
-  },
-  {
-    name: "Chào hè - Giảm 15%",
-    code: "SUMMER15",
-    startDate: "2025-06-01",
-    endDate: "2025-07-31",
-    usageCount: 340,
-    status: "Đã kết thúc",
-  },
-  {
-    name: "Giảm 100k cho khách hàng VIP",
-    code: "VIP100K",
-    startDate: "2025-01-01",
-    endDate: "2025-12-31",
-    usageCount: 25,
-    status: "Đang diễn ra",
-  },
+  // ...Thêm dữ liệu mẫu khác nếu cần
 ];
 
-// --- LOGIC ---
+// --- LOGIC & HELPERS ---
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
-const getStatusType = (status) => {
-  if (status === "Đang diễn ra") return "success";
-  if (status === "Sắp diễn ra") return "warning";
-  if (status === "Đã kết thúc") return "info";
+const formatDate = (dateString) =>
+  new Date(dateString).toLocaleDateString("vi-VN");
+
+const getStatusInfo = (item) => {
+  const now = new Date();
+  const startDate = new Date(item.startDate);
+  const endDate = new Date(item.endDate);
+  endDate.setHours(23, 59, 59, 999); // Tính đến hết ngày
+
+  if (now < startDate) return { text: "Sắp diễn ra", type: "warning" };
+  if (now > endDate) return { text: "Đã kết thúc", type: "info" };
+  return { text: "Đang diễn ra", type: "success" };
+};
+
+const getStatusType = (statusText) => {
+  if (statusText === "Đang diễn ra") return "success";
+  if (statusText === "Sắp diễn ra") return "warning";
+  if (statusText === "Đã kết thúc") return "info";
   return "";
 };
 
-// === SỬA ĐỔI: Thêm hàm chuyển đổi từ tab name sang status text ===
 const getStatusFromTab = (tabName) => {
   const statusMap = {
     active: "Đang diễn ra",
@@ -207,22 +261,27 @@ const getStatusFromTab = (tabName) => {
   };
   return statusMap[tabName];
 };
-// =============================================================
+
+// --- COMPUTED PROPERTIES ---
+const processedDiscounts = computed(() => {
+  // Thêm trường status động vào mỗi object
+  return discounts.value.map((d) => ({
+    ...d,
+    status: getStatusInfo(d).text,
+  }));
+});
 
 const filteredDiscounts = computed(() => {
-  return discounts.value.filter((item) => {
-    // Lọc theo ô tìm kiếm
+  return processedDiscounts.value.filter((item) => {
     const searchMatch = search.value
       ? item.name.toLowerCase().includes(search.value.toLowerCase()) ||
         item.code.toLowerCase().includes(search.value.toLowerCase())
       : true;
 
-    // === SỬA ĐỔI: Sửa lại logic lọc theo tab cho chính xác ===
     const tabMatch =
       activeTab.value === "all"
         ? true
         : item.status === getStatusFromTab(activeTab.value);
-    // ====================================================
 
     return searchMatch && tabMatch;
   });
@@ -233,15 +292,43 @@ const pagedDiscounts = computed(() => {
   return filteredDiscounts.value.slice(start, start + pageSize);
 });
 
-const createDiscount = () => {};
+// --- ACTIONS ---
+const createDiscount = () => {
+  router.push({ name: "CreateDiscount" });
+};
 
-// === SỬA ĐỔI: Theo dõi TẤT CẢ các bộ lọc để reset trang về 1 ===
+const editDiscount = (discount) => {
+  router.push({ name: "EditDiscount", params: { id: discount.id } });
+};
+
+const deactivateDiscount = (discount) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc muốn kết thúc sớm chương trình khuyến mại "${discount.name}" không?`,
+    "Xác nhận hành động",
+    {
+      confirmButtonText: "Đồng ý",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(() => {
+      const index = discounts.value.findIndex((d) => d.id === discount.id);
+      if (index !== -1) {
+        // Cập nhật ngày kết thúc là ngày hôm qua để đảm bảo nó trở thành "Đã kết thúc"
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        discounts.value[index].endDate = yesterday.toISOString().split("T")[0];
+      }
+      ElMessage.success("Đã kết thúc chương trình khuyến mại.");
+    })
+    .catch(() => {});
+};
+
+// --- LIFECYCLE & WATCHERS ---
 watch([activeTab, search], () => {
   currentPage.value = 1;
 });
-// =============================================================
 
-// --- LIFECYCLE HOOKS ---
 onMounted(() => {
   checkScreenSize();
   window.addEventListener("resize", checkScreenSize);
@@ -250,13 +337,13 @@ onMounted(() => {
     isLoading.value = false;
   }, 500);
 });
-onBeforeUnmount(() => {
+
+onUnmounted(() => {
   window.removeEventListener("resize", checkScreenSize);
 });
 </script>
 
 <style scoped>
-/* @import "./responsive-style.css"; */
 .filters-bar {
   justify-content: space-between;
 }
@@ -275,8 +362,6 @@ onBeforeUnmount(() => {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
-.discount-info {
-}
 .discount-name {
   font-weight: 600;
   color: #111827;
@@ -286,36 +371,8 @@ onBeforeUnmount(() => {
   color: #6b7280;
   margin-top: 2px;
 }
-.orders-empty-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-.orders-empty-desc {
-  font-size: 0.9rem;
-  color: #6b7280;
-  max-width: 400px;
-  margin-top: 8px;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
 
-@media (max-width: 767px) {
-  .order-tabs :deep(.el-tabs__header) {
-    padding: 0;
-  }
-  .order-tabs :deep(.el-tabs__nav) {
-    width: 100%;
-    display: flex;
-  }
-  .order-tabs :deep(.el-tabs__item) {
-    flex: 1;
-    text-align: center;
-    padding: 0 5px;
-  }
-}
-
-/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+/* GLOBAL STYLES */
 .page-container {
   padding: 16px;
   background-color: #f9fafb;
@@ -335,8 +392,6 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: #111827;
 }
-
-/* ----- CONTAINERS & BARS ----- */
 .table-container {
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
@@ -362,7 +417,7 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-/* ----- MOBILE CARD STYLES ----- */
+/* MOBILE CARD STYLES */
 .mobile-card-list {
   padding: 16px;
 }
@@ -372,15 +427,14 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   margin-bottom: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
 }
 .card-header {
   padding: 12px 16px;
   border-bottom: 1px solid #f3f4f6;
-  font-weight: 600;
-}
-.card-title {
-  color: #111827;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
 }
 .card-body {
   padding: 12px 16px;
@@ -410,7 +464,7 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-/* ----- ELEMENT PLUS CUSTOMIZATION ----- */
+/* ELEMENT PLUS CUSTOMIZATION */
 .page-container :deep(.el-button) {
   border-radius: 6px;
   font-weight: 500;
@@ -421,7 +475,21 @@ onBeforeUnmount(() => {
   border: 1px solid #d1d5db;
 }
 
-/* ----- DESKTOP OVERRIDES ----- */
+/* RESPONSIVE OVERRIDES */
+@media (max-width: 767px) {
+  .order-tabs :deep(.el-tabs__header) {
+    padding: 0;
+  }
+  .order-tabs :deep(.el-tabs__nav) {
+    width: 100%;
+    display: flex;
+  }
+  .order-tabs :deep(.el-tabs__item) {
+    flex: 1;
+    text-align: center;
+    padding: 0 5px;
+  }
+}
 @media (min-width: 768px) {
   .page-container {
     padding: 24px 32px;

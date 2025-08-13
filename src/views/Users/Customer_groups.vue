@@ -2,7 +2,7 @@
   <div class="customer-groups-page">
     <div class="page-header">
       <h1 class="page-title">Nhóm khách hàng</h1>
-      <el-button type="primary" :icon="Plus" @click="addGroup">
+      <el-button type="primary" :icon="Plus" @click="openDialog()">
         Thêm nhóm
       </el-button>
     </div>
@@ -47,11 +47,34 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Thao tác" width="220" align="center">
-          <template #default>
+        <el-table-column label="Thao tác" width="280" align="center">
+          <template #default="scope">
             <div class="action-buttons">
-              <el-button size="small" :icon="View" text bg>Xem khách</el-button>
-              <el-button size="small" :icon="Edit" text bg>Sửa</el-button>
+              <el-button
+                size="small"
+                :icon="View"
+                text
+                bg
+                @click="viewCustomersInGroup(scope.row)"
+                >Xem khách</el-button
+              >
+              <el-button
+                size="small"
+                :icon="Edit"
+                text
+                bg
+                @click="openDialog(scope.row)"
+                >Sửa</el-button
+              >
+              <el-button
+                size="small"
+                :icon="Delete"
+                text
+                bg
+                type="danger"
+                @click="handleDelete(scope.row)"
+                >Xóa</el-button
+              >
             </div>
           </template>
         </el-table-column>
@@ -84,11 +107,38 @@
             </div>
           </div>
           <div class="card-footer">
-            <el-button size="small" :icon="View" text bg>Xem khách</el-button>
-            <el-button size="small" :icon="Edit" text bg>Sửa</el-button>
+            <el-button
+              size="small"
+              :icon="View"
+              text
+              bg
+              @click="viewCustomersInGroup(item)"
+              >Xem khách</el-button
+            >
+            <el-button
+              size="small"
+              :icon="Edit"
+              text
+              bg
+              @click="openDialog(item)"
+              >Sửa</el-button
+            >
+            <el-button
+              size="small"
+              :icon="Delete"
+              text
+              bg
+              type="danger"
+              @click="handleDelete(item)"
+              >Xóa</el-button
+            >
           </div>
         </div>
       </div>
+      <el-empty
+        v-if="pagedGroups.length === 0"
+        description="Không có nhóm khách hàng nào"
+      />
     </div>
 
     <div class="pagination-container">
@@ -101,11 +151,48 @@
         v-model:current-page="currentPage"
       />
     </div>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="
+        isEditMode ? 'Chỉnh sửa nhóm khách hàng' : 'Thêm nhóm khách hàng mới'
+      "
+      width="500px"
+      :fullscreen="isMobile"
+    >
+      <el-form :model="form" label-position="top">
+        <el-form-item label="Tên nhóm" required>
+          <el-input
+            v-model="form.name"
+            placeholder="Ví dụ: Khách VIP, Khách sỉ..."
+          />
+        </el-form-item>
+        <el-form-item label="Mã nhóm">
+          <el-input
+            v-model="form.code"
+            placeholder="Mã sẽ tự tạo nếu để trống"
+          />
+        </el-form-item>
+        <el-form-item label="Mô tả">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="3"
+            placeholder="Nhập mô tả ngắn cho nhóm"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">Hủy</el-button>
+        <el-button type="primary" @click="handleSave">Lưu</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import {
   Search,
   Plus,
@@ -113,19 +200,21 @@ import {
   View,
   User,
   Folder,
+  Delete,
 } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 
-// --- RESPONSIVE STATE ---
+// --- ROUTER & RESPONSIVE STATE ---
+const router = useRouter();
 const isMobile = ref(false);
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
-
 onMounted(() => {
   checkScreenSize();
   window.addEventListener("resize", checkScreenSize);
 });
-onBeforeUnmount(() => {
+onUnmounted(() => {
   window.removeEventListener("resize", checkScreenSize);
 });
 
@@ -133,7 +222,6 @@ onBeforeUnmount(() => {
 const search = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
-
 const groups = ref([
   {
     code: "GR001",
@@ -165,37 +253,17 @@ const groups = ref([
     customerCount: 10,
     description: "Khách hàng là các công ty, tổ chức.",
   },
-  {
-    code: "GR006",
-    name: "Khách thân thiết",
-    customerCount: 22,
-    description: "Khách hàng quay lại mua sắm thường xuyên.",
-  },
-  {
-    code: "GR007",
-    name: "Khách mới",
-    customerCount: 50,
-    description: "Khách hàng phát sinh trong 30 ngày.",
-  },
-  {
-    code: "GR008",
-    name: "Khách online",
-    customerCount: 15,
-    description: "Khách hàng từ các kênh TMĐT.",
-  },
-  {
-    code: "GR009",
-    name: "Khách nội bộ",
-    customerCount: 5,
-    description: "Nhân viên và người thân.",
-  },
-  {
-    code: "GR010",
-    name: "Khách nước ngoài",
-    customerCount: 2,
-    description: "Khách hàng quốc tế.",
-  },
 ]);
+
+// --- FORM STATE & DIALOG ---
+const dialogVisible = ref(false);
+const isEditMode = ref(false);
+const form = reactive({
+  code: "",
+  name: "",
+  description: "",
+  customerCount: 0,
+});
 
 const filteredGroups = computed(() => {
   if (!search.value) {
@@ -219,8 +287,81 @@ const onSearch = () => {
   currentPage.value = 1;
 };
 
-const addGroup = () => {
-  console.log("Thêm nhóm khách hàng mới");
+// --- CRUD & ACTION FUNCTIONS ---
+const openDialog = (group = null) => {
+  if (group) {
+    // Chế độ sửa
+    isEditMode.value = true;
+    Object.assign(form, group); // Copy dữ liệu của nhóm vào form
+  } else {
+    // Chế độ thêm mới
+    isEditMode.value = false;
+    Object.assign(form, {
+      // Reset form
+      code: "",
+      name: "",
+      description: "",
+      customerCount: 0,
+    });
+  }
+  dialogVisible.value = true;
+};
+
+const handleSave = () => {
+  if (!form.name) {
+    ElMessage.error("Vui lòng nhập tên nhóm.");
+    return;
+  }
+
+  if (isEditMode.value) {
+    // Logic cập nhật
+    const index = groups.value.findIndex((g) => g.code === form.code);
+    if (index !== -1) {
+      groups.value[index] = { ...form };
+    }
+  } else {
+    // Logic thêm mới
+    const newGroup = { ...form };
+    if (!newGroup.code) {
+      // Tự tạo mã mới nếu để trống
+      const nextId =
+        Math.max(
+          ...groups.value.map((g) => parseInt(g.code.replace("GR", "")))
+        ) + 1;
+      newGroup.code = "GR" + String(nextId).padStart(3, "0");
+    }
+    groups.value.unshift(newGroup); // Thêm vào đầu danh sách
+  }
+
+  ElMessage.success("Lưu thông tin nhóm thành công!");
+  dialogVisible.value = false;
+};
+
+const handleDelete = (group) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc muốn xóa nhóm "${group.name}"? Thao tác này không thể hoàn tác.`,
+    "Xác nhận xóa",
+    {
+      confirmButtonText: "Đồng ý xóa",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(() => {
+      groups.value = groups.value.filter((g) => g.code !== group.code);
+      ElMessage.success("Đã xóa nhóm thành công.");
+    })
+    .catch(() => {
+      // Bắt lỗi khi người dùng nhấn "Hủy"
+    });
+};
+
+const viewCustomersInGroup = (group) => {
+  // Điều hướng đến trang danh sách khách hàng, truyền tên nhóm qua query
+  router.push({
+    name: "CustomerList", // Giả sử route của bạn tên là 'CustomerList'
+    query: { group: group.name },
+  });
 };
 </script>
 

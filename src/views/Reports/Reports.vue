@@ -72,29 +72,23 @@
 
     <div class="content-card">
       <h2 class="card-section-title">Biểu đồ doanh thu</h2>
-      <img
-        src="https://placehold.co/600x200/3b82f6/ffffff?text=Biểu+đồ+đường+(Line+Chart)"
-        alt="Chart"
-        class="chart-placeholder"
-      />
+      <div style="height: 250px;">
+        <revenue-line-chart />
+      </div>
     </div>
 
     <div class="details-grid">
       <div class="content-card">
         <h2 class="card-section-title">Top 5 sản phẩm bán chạy</h2>
-        <img
-          src="https://placehold.co/400x250/16a34a/ffffff?text=Biểu+đồ+cột+ngang+(Bar+Chart)"
-          alt="Chart"
-          class="chart-placeholder"
-        />
+        <div style="height: 300px;">
+          <top-products-chart />
+        </div>
       </div>
       <div class="content-card">
         <h2 class="card-section-title">Phân loại theo kênh bán hàng</h2>
-        <img
-          src="https://placehold.co/400x250/f97316/ffffff?text=Biểu+đồ+tròn+(Donut+Chart)"
-          alt="Chart"
-          class="chart-placeholder"
-        />
+        <div style="height: 300px;">
+          <sales-channel-chart />
+        </div>
       </div>
     </div>
 
@@ -153,6 +147,9 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import RevenueLineChart from "./RevenueLineChart.vue";
+import TopProductsChart from "../../components/TopProductsChart.vue";
+import SalesChannelChart from "../../components/SalesChannelChart.vue";
 import {
   Money,
   Tickets,

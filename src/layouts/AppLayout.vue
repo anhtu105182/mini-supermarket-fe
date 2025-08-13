@@ -55,6 +55,7 @@ export default {
 
 .content {
   flex: 1;
+  width: 100vh;
   /* padding: 20px; */
 }
 .test {

@@ -1,72 +1,40 @@
 <template>
-  <Line :data="chartData" :options="chartOptions" />
+  <canvas ref="chartCanvas"></canvas>
 </template>
 
 <script setup>
-import { Line } from "vue-chartjs";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import { ref, onMounted } from 'vue';
+import Chart from 'chart.js/auto';
 
-// Đăng ký các thành phần cần thiết cho Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+const chartCanvas = ref(null);
 
-// Dữ liệu mẫu cho biểu đồ (bạn có thể thay thế bằng dữ liệu thật từ API)
-const chartData = {
-  labels: [
-    "Tháng 1",
-    "Tháng 2",
-    "Tháng 3",
-    "Tháng 4",
-    "Tháng 5",
-    "Tháng 6",
-    "Tháng 7",
-  ],
-  datasets: [
-    {
-      label: "Doanh thu",
-      backgroundColor: "#3b82f6", // Màu nền của điểm dữ liệu
-      borderColor: "#3b82f6", // Màu của đường kẻ
-      data: [65, 59, 80, 81, 56, 55, 40], // Dữ liệu doanh thu (triệu đồng)
-      tension: 0.3, // Làm cho đường kẻ mượt hơn
+onMounted(() => {
+  const ctx = chartCanvas.value.getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7'],
+      datasets: [{
+        label: 'Doanh thu',
+        data: [65000000, 59000000, 80000000, 81000000, 56000000, 55000000, 40000000],
+        fill: false,
+        borderColor: '#3b82f6',
+        tension: 0.1
+      }]
     },
-  ],
-};
-
-// Tùy chọn hiển thị cho biểu đồ
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false, // Ẩn chú thích 'Doanh thu' ở trên cùng
-    },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: {
-        // Thêm đơn vị 'tr' vào sau các số trên trục Y
-        callback: function (value) {
-          return value + "tr";
-        },
-      },
-    },
-  },
-};
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          ticks: {
+            callback: function(value) {
+              return value.toLocaleString('vi-VN') + 'đ';
+            }
+          }
+        }
+      }
+    }
+  });
+});
 </script>
