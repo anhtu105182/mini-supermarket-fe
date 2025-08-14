@@ -10,22 +10,31 @@
       v-show="!isMobile || mobileOpen"
       :style="
         isMobile && mobileOpen
-          ? 'width: 100vw; min-width: 0; max-width: 100vw; left: 0;'
+          ? 'width:100vw;min-width:0;max-width:100vw;left:0'
           : ''
       "
     >
+      <!-- Header -->
       <div class="sidebar-logo">
         <button class="sidebar-toggle" @click="toggleSidebar">
           <i v-if="isMobile && mobileOpen" class="fa-solid fa-xmark"></i>
           <i v-else class="fa-solid fa-bars"></i>
         </button>
-        <span v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
-          >MiniMarket</span
-        >
+        <span v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)">
+          MiniMarket
+        </span>
       </div>
+
+      <!-- Menu -->
       <ul class="sidebar-menu">
         <li v-for="item in menuItems" :key="item.to || item.label">
-          <div v-if="item.children" class="sidebar-parent">
+          <!-- Có submenu -->
+          <div
+            v-if="item.children"
+            class="sidebar-parent"
+            @mouseenter="onParentEnter(item, $event)"
+            @mouseleave="onParentLeave"
+          >
             <a
               href="javascript:void(0)"
               @click="handleParentClick(item)"
@@ -34,50 +43,74 @@
               <i class="icon" :class="item.icon"></i>
               <span
                 v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
-                >{{ item.label }}</span
               >
-              <span
-                class="submenu-arrow"
-                v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
-              >
-                <!-- <i
-                  :class="
-                    isParentOpen(item)
-                      ? 'fa-solid fa-chevron-down'
-                      : 'fa-solid fa-chevron-right'
-                  "
-                ></i> -->
+                {{ item.label }}
               </span>
             </a>
-            <ul v-show="isParentOpen(item)" class="sidebar-submenu">
+
+            <!-- Submenu inline (expanded/mobile) -->
+            <ul
+              v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
+              v-show="isParentOpen(item)"
+              class="sidebar-submenu"
+            >
               <li v-for="sub in item.children" :key="sub.to">
-                <router-link :to="sub.to" @click="closeMobileSidebar">
-                  <span
-                    v-if="
-                      (!isCollapsed && !isMobile) || (isMobile && mobileOpen)
-                    "
-                    >{{ sub.label }}</span
-                  >
+                <router-link
+                  :to="sub.to"
+                  :class="{ active: isRouteActive(sub.to) }"
+                  @click="closeMobileSidebar"
+                >
+                  <span>{{ sub.label }}</span>
+                </router-link>
+              </li>
+            </ul>
+
+            <!-- Flyout (collapsed desktop) -->
+            <ul
+              v-else
+              class="sidebar-submenu flyout"
+              v-show="isHoverOpen(item)"
+              :style="{
+                top: flyoutPos.top + 'px',
+                left: 80 + 'px',
+              }"
+              @mouseenter="hoverParent = item.label"
+              @mouseleave="onParentLeave"
+            >
+              <li class="flyout-title">{{ item.label }}</li>
+              <li v-for="sub in item.children" :key="sub.to">
+                <router-link
+                  :to="sub.to"
+                  :class="{ active: isRouteActive(sub.to) }"
+                >
+                  <span>{{ sub.label }}</span>
                 </router-link>
               </li>
             </ul>
           </div>
+
+          <!-- Không có submenu -->
           <router-link v-else :to="item.to" @click="closeMobileSidebar">
             <i class="icon" :class="item.icon"></i>
             <span
               v-if="(!isCollapsed && !isMobile) || (isMobile && mobileOpen)"
-              >{{ item.label }}</span
             >
+              {{ item.label }}
+            </span>
           </router-link>
         </li>
       </ul>
     </nav>
+
+    <!-- Overlay mobile -->
     <div
       v-if="isMobile && mobileOpen"
       class="sidebar-overlay"
       @click="closeMobileSidebar"
       style="z-index: 3999"
     ></div>
+
+    <!-- Nút hamburger (mobile) -->
     <button
       v-if="isMobile && !mobileOpen"
       class="sidebar-hamburger"
@@ -91,20 +124,23 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
 export default {
   name: "AppSidebar",
   setup() {
-    const isCollapsed = ref(false);
-    const isMobile = ref(false);
-    const mobileOpen = ref(false);
-    const openParent = ref(null);
     const router = useRouter();
     const route = useRoute();
 
-    // Sử dụng Font Awesome icons
+    const isCollapsed = ref(false);
+    const isMobile = ref(false);
+    const mobileOpen = ref(false);
+
+    const openParent = ref(null); // mở theo click (expanded/mobile)
+    const hoverParent = ref(null); // mở theo hover (collapsed)
+    const flyoutPos = ref({ top: 0, left: 0 });
+
     const menuItems = [
       { to: "/dashboard", icon: "fa-solid fa-house", label: "Tổng quan" },
       {
@@ -166,35 +202,54 @@ export default {
       },
     ];
 
+    /* Active helpers */
+    const isRouteActive = (path) =>
+      route.path === path || route.path.startsWith(path + "/");
+
+    const isParentActive = (parentItem) =>
+      !!parentItem.children &&
+      parentItem.children.some((c) => isRouteActive(c.to));
+
     const isParentOpen = (item) => openParent.value === item.label;
+    const isHoverOpen = (item) => hoverParent.value === item.label;
 
-    // Kiểm tra xem menu cha có chứa route hiện tại không
-    const isParentActive = (parentItem) => {
-      if (!parentItem.children) return false;
-      return parentItem.children.some((child) =>
-        route.path.startsWith(child.to)
-      );
-    };
-
+    /* Handlers */
     const handleParentClick = (item) => {
-      if (openParent.value === item.label) {
-        // Nếu đang mở thì đóng lại (thu submenu)
-        openParent.value = null;
-      } else {
-        openParent.value = item.label;
-        // Nếu có children và có đường dẫn đầu tiên, chuyển hướng sang đó
-        if (item.children && item.children[0]?.to) {
+      // Expanded/mobile: mở inline + điều hướng child đầu
+      if (isMobile.value || !isCollapsed.value) {
+        openParent.value = isParentOpen(item) ? null : item.label;
+        if (item.children?.[0]?.to) {
           router.push(item.children[0].to);
           closeMobileSidebar();
         }
+      } else if (item.children?.[0]?.to) {
+        // Collapsed desktop: click → đi thẳng child đầu
+        router.push(item.children[0].to);
       }
     };
 
-    // Tự động mở menu cha khi tải trang
+    const onParentEnter = (item, evt) => {
+      if (isMobile.value || !isCollapsed.value || !item.children) return;
+      hoverParent.value = item.label;
+
+      const rect = evt.currentTarget.getBoundingClientRect();
+      const sbEl = document.querySelector(".sidebar");
+      const sbWidth = sbEl ? sbEl.getBoundingClientRect().width : 80;
+      const GAP = 8;
+
+      const top = Math.max(12, Math.min(rect.top, window.innerHeight - 200));
+      flyoutPos.value = { top, left: sbWidth + GAP };
+    };
+
+    const onParentLeave = () => {
+      if (isMobile.value || !isCollapsed.value) return;
+      hoverParent.value = null;
+    };
+
     const setInitialOpenParent = () => {
-      for (const item of menuItems) {
-        if (isParentActive(item)) {
-          openParent.value = item.label;
+      for (const it of menuItems) {
+        if (isParentActive(it)) {
+          openParent.value = it.label;
           break;
         }
       }
@@ -212,97 +267,108 @@ export default {
         isCollapsed.value = false;
       }
       if (!isMobile.value) mobileOpen.value = false;
+      hoverParent.value = null;
     };
 
     const toggleSidebar = () => {
-      if (isMobile.value) {
-        mobileOpen.value = !mobileOpen.value;
-      } else {
-        isCollapsed.value = !isCollapsed.value;
-      }
+      if (isMobile.value) mobileOpen.value = !mobileOpen.value;
+      else isCollapsed.value = !isCollapsed.value;
     };
 
     const closeMobileSidebar = () => {
       if (isMobile.value) mobileOpen.value = false;
     };
 
+    /* Lifecycle */
     onMounted(() => {
       handleResize();
       setInitialOpenParent();
       window.addEventListener("resize", handleResize);
     });
+    onBeforeUnmount(() => window.removeEventListener("resize", handleResize));
 
-    onBeforeUnmount(() => {
-      window.removeEventListener("resize", handleResize);
-    });
+    watch(
+      () => route.path,
+      () => {
+        hoverParent.value = null;
+        setInitialOpenParent();
+      }
+    );
 
     return {
       isCollapsed,
       isMobile,
       mobileOpen,
       menuItems,
+      openParent,
+      hoverParent,
+      flyoutPos,
+      isParentOpen,
+      isParentActive,
+      isRouteActive,
+      isHoverOpen,
       toggleSidebar,
       closeMobileSidebar,
-      openParent,
-      isParentOpen,
       handleParentClick,
-      isParentActive,
+      onParentEnter,
+      onParentLeave,
     };
   },
 };
 </script>
 
 <style scoped>
-/* ----- BASE STYLES ----- */
+/* ===== Base ===== */
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 260px; /* Tăng chiều rộng cho thoáng */
+  width: 260px;
   height: 100vh;
-  background: #ffffff; /* Nền trắng */
-  color: #1a1a1a; /* Chữ đen */
-  border-right: 1px solid #e5e7eb; /* Đường viền phải tinh tế */
+  background: #fff;
+  color: #1a1a1a;
+  border-right: 1px solid #e5e7eb;
   z-index: 4000;
   display: flex;
   flex-direction: column;
-  font-family: "Inter", sans-serif; /* Font hiện đại */
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   transition: width 0.3s ease, left 0.3s ease;
 }
 
+/* Chỉ set width cho menu của sidebar (tránh flyout full width) */
+.sidebar-menu,
+.sidebar-menu ul {
+  width: 100%;
+}
 ul {
   list-style: none;
   padding: 0;
   margin: 0;
-  width: 100%;
 }
-
 li {
   width: 100%;
 }
 
-/* ----- LOGO & TOGGLE ----- */
+/* Header */
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 65px; /* Tăng chiều cao header */
+  height: 65px;
   padding: 0 20px;
-  font-size: 1.4rem; /* Tăng kích thước logo */
+  font-size: 1.4rem;
   font-weight: 600;
   color: #111827;
-  flex-shrink: 0;
   position: sticky;
   top: 0;
-  background: #ffffff;
+  background: #fff;
   z-index: 101;
   border-bottom: 1px solid #e5e7eb;
 }
-
 .sidebar-toggle {
   background: none;
   border: none;
-  color: #4b5563; /* Màu icon xám */
+  color: #4b5563;
   font-size: 1.1rem;
   cursor: pointer;
   padding: 8px;
@@ -310,106 +376,83 @@ li {
   transition: background-color 0.2s;
 }
 .sidebar-toggle:hover {
-  background-color: #f3f4f6;
+  background: #f3f4f6;
 }
 
-/* ----- MENU ----- */
+/* Items */
 .sidebar-menu {
   flex: 1 1 auto;
   overflow-y: auto;
-  /* padding: 20px 10px 20px 10px; Tăng padding trên/dưới và hai bên */
 }
-
 .sidebar-menu a {
   display: flex;
   align-items: center;
+  gap: 16px;
   color: #374151;
   text-decoration: none;
-  font-size: 1rem; /* Tăng nhẹ font-size */
+  font-size: 1rem;
   font-weight: 500;
-  padding: 14px 18px; /* Tăng padding cho item */
-  border-radius: 8px; /* Bo góc nhiều hơn */
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 8px;
   transition: background 0.2s, color 0.2s;
-  gap: 16px; /* Tăng khoảng cách icon và text */
-  margin-bottom: 8px; /* Tăng khoảng cách giữa các item */
 }
-
 .sidebar-menu a:hover {
-  background: #f3f4f6; /* Nền xám nhạt khi hover */
+  background: #f3f4f6;
   color: #111827;
 }
-
 .icon {
   font-size: 1.1rem;
   width: 20px;
   text-align: center;
-  color: #6b7280; /* Màu icon xám */
+  color: #6b7280;
   transition: color 0.2s;
 }
-
 a:hover .icon {
   color: #111827;
 }
 
-/* Active State */
-.router-link-exact-active,
+/* Active */
+.sidebar-menu a.active,
 .sidebar-parent > a.active {
   background: #f3f4f6;
   color: #111827;
   font-weight: 600;
 }
-.router-link-exact-active .icon,
-.sidebar-parent > a.active .icon {
+.sidebar-submenu a.active {
+  background: none !important;
   color: #111827;
+  font-weight: 600;
 }
 
-/* ----- SUBMENU ----- */
+/* Inline submenu */
 .sidebar-parent > a {
   cursor: pointer;
   user-select: none;
   display: flex;
   align-items: center;
-  /* justify-content: space-between; */ /* XÓA DÒNG NÀY */
-  justify-content: flex-start; /* Thêm dòng này */
-  gap: 8px; /* Thêm khoảng cách nhỏ giữa icon và chữ */
+  justify-content: flex-start;
+  gap: 8px;
 }
 .sidebar-parent > a span {
-  /* flex: 1; */
   text-align: left;
 }
 .sidebar-submenu {
-  /* padding-left: 28px;  */
   margin-top: 6px;
 }
 .sidebar-submenu a {
-  padding-left: 40px; /* Tăng lề trái cho text submenu */
+  padding-left: 40px;
   font-size: 0.97rem;
   font-weight: 400;
   color: #4b5563;
   background: none !important;
-  margin-bottom: 6px; /* Tăng khoảng cách giữa các submenu item */
-}
-.sidebar-submenu .router-link-exact-active {
-  color: #111827;
-  font-weight: 600;
+  margin-bottom: 6px;
 }
 .sidebar-submenu a:hover {
   color: #111827;
 }
 
-.submenu-arrow {
-  font-size: 0.7em;
-  color: #9ca3af;
-  transition: transform 0.2s;
-}
-.submenu-arrow i {
-  transition: transform 0.2s ease;
-}
-a.active .submenu-arrow i.fa-chevron-down {
-  transform: rotate(0deg);
-}
-
-/* ----- COLLAPSED STATE ----- */
+/* ===== Collapsed (desktop) ===== */
 .sidebar.collapsed {
   width: 80px;
 }
@@ -417,32 +460,79 @@ a.active .submenu-arrow i.fa-chevron-down {
   justify-content: center;
   padding: 0;
 }
+
+/* Ẩn chữ CHỈ ở link cấp 1 (không ảnh hưởng flyout) */
 .sidebar.collapsed .sidebar-logo span,
-.sidebar.collapsed a span,
-.sidebar.collapsed .submenu-arrow {
+.sidebar.collapsed > .sidebar-menu > li > a span,
+.sidebar.collapsed > .sidebar-menu > li > .sidebar-parent > a span {
   display: none !important;
 }
-/* .sidebar.collapsed .sidebar-menu {
-  padding: 12px 8px;
-} */
-.sidebar.collapsed a {
+
+/* Căn giữa chỉ ở link cấp 1 */
+.sidebar.collapsed > .sidebar-menu > li > a,
+.sidebar.collapsed > .sidebar-menu > li > .sidebar-parent > a {
   justify-content: center;
 }
+
 .sidebar.collapsed .icon {
   font-size: 1.4rem;
   margin: 0;
 }
-.sidebar.collapsed .sidebar-submenu {
+
+/* Ẩn submenu inline khi collapsed (KHÔNG ẩn flyout) */
+.sidebar.collapsed .sidebar-submenu:not(.flyout) {
   display: none !important;
 }
 
-/* ----- MOBILE STATE ----- */
+/* ===== Flyout (hover khi collapsed) ===== */
+/* KHÔNG đặt display ở đây — để v-show điều khiển */
+.sidebar.collapsed .sidebar-submenu.flyout {
+  position: fixed;
+  width: max-content;
+  min-width: 220px;
+  max-width: 360px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  padding: 8px;
+  z-index: 5000;
+}
+.sidebar.collapsed .sidebar-submenu.flyout a span {
+  display: inline !important;
+} /* bảo đảm hiện chữ */
+.sidebar-submenu.flyout li {
+  margin: 0;
+}
+.sidebar-submenu.flyout a {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #374151;
+  text-decoration: none;
+}
+.sidebar-submenu.flyout a:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.sidebar-submenu.flyout .flyout-title {
+  font-weight: 700;
+  color: #111827;
+  padding: 8px 12px 6px;
+  pointer-events: none;
+}
+
+/* ===== Mobile ===== */
 .sidebar-hamburger {
   position: fixed;
   top: 10px;
   left: 10px;
   z-index: 4001;
-  background: #ffffff;
+  background: #fff;
   color: #1f2937;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -455,28 +545,25 @@ a.active .submenu-arrow i.fa-chevron-down {
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-
 .sidebar-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(9, 30, 66, 0.2); /* Overlay tối hơn một chút */
+  background: rgba(9, 30, 66, 0.2);
   z-index: 3999;
 }
-
 @media (min-width: 901px) {
   .sidebar-hamburger {
     display: none !important;
   }
 }
-
 @media (max-width: 900px) {
   .sidebar {
     width: 300px;
     max-width: calc(100vw - 60px);
-    left: -320px; /* Ẩn sidebar */
+    left: -320px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
       0 4px 6px -2px rgba(0, 0, 0, 0.05);
     border-right: none;
@@ -487,7 +574,7 @@ a.active .submenu-arrow i.fa-chevron-down {
   }
 }
 
-/* Custom Scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
