@@ -2,7 +2,7 @@
   <div class="page-container">
     <div class="page-header">
       <h1 class="page-title">Bảng giá sản phẩm</h1>
-      <el-button type="primary" :icon="Plus" @click="addPriceList">
+      <el-button type="primary" :icon="Plus" @click="openForm()">
         Thêm bảng giá
       </el-button>
     </div>
@@ -19,7 +19,7 @@
         />
       </div>
 
-      <el-table v-if="!isMobile" :data="pagedCatalogs" style="width: 100%">
+      <el-table v-if="!isMobile" :data="pagedCatalogs" v-loading="isLoading" style="width: 100%">
         <el-table-column prop="code" label="Mã SP" width="150" />
         <el-table-column prop="name" label="Tên sản phẩm" min-width="250" />
         <el-table-column prop="price" label="Giá bán" width="180">
@@ -29,15 +29,17 @@
         </el-table-column>
         <el-table-column prop="unit" label="Đơn vị" width="120" />
         <el-table-column label="Thao tác" width="120" align="center">
-          <div class="action-buttons">
-            <el-button size="small" :icon="Edit" circle />
-            <el-button size="small" type="danger" :icon="Delete" circle />
-          </div>
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button size="small" :icon="Edit" circle @click="openForm(scope.row)" />
+              <el-button size="small" type="danger" :icon="Delete" circle @click="handleDelete(scope.row)" />
+            </div>
+          </template>
         </el-table-column>
       </el-table>
 
       <div v-else class="mobile-card-list">
-        <div v-for="item in pagedCatalogs" :key="item.code" class="mobile-card">
+        <div v-for="item in pagedCatalogs" :key="item.id" class="mobile-card">
           <div class="card-header">
             <span class="card-title">{{ item.name }}</span>
           </div>
@@ -58,8 +60,8 @@
             </div>
           </div>
           <div class="card-footer">
-            <el-button size="small" :icon="Edit" circle />
-            <el-button size="small" type="danger" :icon="Delete" circle />
+            <el-button size="small" :icon="Edit" circle @click="openForm(item)" />
+            <el-button size="small" type="danger" :icon="Delete" circle @click="handleDelete(item)" />
           </div>
         </div>
       </div>
@@ -75,62 +77,70 @@
         v-model:current-page="currentPage"
       />
     </div>
+
+    <catalog-form 
+      :visible="dialogVisible" 
+      :catalog="currentCatalog" 
+      @close="closeForm" 
+      @submit="handleFormSubmit"
+    />
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { Search, Plus, Edit, Delete } from "@element-plus/icons-vue";
+import { ElMessageBox, ElMessage } from "element-plus";
+import CatalogForm from "@/components/CatalogForm.vue";
+import {
+  getCatalogs,
+  createCatalog,
+  updateCatalog,
+  deleteCatalog,
+} from "@/services/catalogService";
+
 
 const isMobile = ref(false);
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
-onMounted(() => {
-  checkScreenSize();
-  window.addEventListener("resize", checkScreenSize);
-});
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", checkScreenSize);
-});
 
 const search = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
-const catalogs = ref([
-  {
-    code: "SP001",
-    name: "Sữa tươi Vinamilk không đường 1L",
-    price: 32000,
-    unit: "Hộp",
-  },
-  {
-    code: "SP002",
-    name: "Bánh quy kẹp kem Oreo Socola",
-    price: 15000,
-    unit: "Gói",
-  },
-  {
-    code: "SP003",
-    name: "Nước giải khát Coca-Cola 1.5L",
-    price: 18000,
-    unit: "Chai",
-  },
-  {
-    code: "SP004",
-    name: "Mì ăn liền Hảo Hảo tôm chua cay",
-    price: 5000,
-    unit: "Gói",
-  },
-  {
-    code: "SP005",
-    name: "Dầu ăn thực vật Neptune Light 1L",
-    price: 45000,
-    unit: "Chai",
-  },
-]);
+const catalogs = ref([]);
+const isLoading = ref(true);
+
+const dialogVisible = ref(false);
+const currentCatalog = ref(null);
+
+const fetchCatalogs = async () => {
+  isLoading.value = true;
+  try {
+    const response = await getCatalogs();
+    catalogs.value = response.data;
+  } catch (error) { 
+    console.error(error);
+    ElMessage.error("Không thể tải danh sách bảng giá.");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  fetchCatalogs();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", checkScreenSize);
+});
+
 const formatCurrency = (value) =>
-  value.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+  (value || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+
 const filteredCatalogs = computed(() => {
   if (!search.value) return catalogs.value;
   return catalogs.value.filter(
@@ -139,14 +149,63 @@ const filteredCatalogs = computed(() => {
       item.code.toLowerCase().includes(search.value.toLowerCase())
   );
 });
+
 const pagedCatalogs = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   return filteredCatalogs.value.slice(start, start + pageSize);
 });
+
 const onSearch = () => {
   currentPage.value = 1;
 };
-const addPriceList = () => {};
+
+const openForm = (catalog = null) => {
+  currentCatalog.value = catalog;
+  dialogVisible.value = true;
+};
+
+const closeForm = () => {
+  dialogVisible.value = false;
+  currentCatalog.value = null;
+};
+
+const handleFormSubmit = async (formData) => {
+  try {
+    if (currentCatalog.value) {
+      await updateCatalog(currentCatalog.value.id, formData);
+      ElMessage.success("Cập nhật bảng giá thành công!");
+    } else {
+      await createCatalog(formData);
+      ElMessage.success("Tạo bảng giá thành công!");
+    }
+    fetchCatalogs();
+    closeForm();
+  } catch (error) {
+    ElMessage.error("Đã có lỗi xảy ra.");
+  }
+};
+
+const handleDelete = (catalog) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa bảng giá cho sản phẩm "${catalog.name}" không?`,
+    "Xác nhận xóa",
+    {
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(async () => {
+      try {
+        await deleteCatalog(catalog.id);
+        ElMessage.success("Đã xóa bảng giá thành công!");
+        fetchCatalogs();
+      } catch (error) {
+        ElMessage.error("Xóa bảng giá thất bại.");
+      }
+    })
+    .catch(() => {});
+};
 </script>
 
 <style scoped>

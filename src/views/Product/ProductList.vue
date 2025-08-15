@@ -1,53 +1,119 @@
 <template>
-  <div class="page-container">
+  <div class="page-container product-list-page">
     <div class="page-header">
       <h1 class="page-title">Danh sách sản phẩm</h1>
       <div class="action-buttons-group">
-        <el-button v-if="!isMobile" :icon="Download">Xuất file</el-button>
-        <el-button v-if="!isMobile" :icon="Upload">Nhập file</el-button>
-        <el-button type="primary" :icon="Plus" @click="addProduct">
-          Thêm sản phẩm
-        </el-button>
+        <el-button
+          :icon="Download"
+          @click="handleExport"
+          :disabled="isLoading || filteredProducts.length === 0"
+          >Xuất file</el-button
+        >
+        <el-button :icon="Upload" @click="triggerImport">Nhập file</el-button>
+        <el-button type="primary" :icon="Plus" @click="openForm()"
+          >Thêm sản phẩm</el-button
+        >
       </div>
     </div>
 
     <el-tabs v-model="activeTab" class="product-tabs">
-      <el-tab-pane label="Tất cả" name="all"></el-tab-pane>
-      <el-tab-pane label="Hoạt động" name="active"></el-tab-pane>
-      <el-tab-pane label="Ngừng hoạt động" name="inactive"></el-tab-pane>
-      <el-tab-pane label="Hết hàng" name="outofstock"></el-tab-pane>
+      <el-tab-pane label="Tất cả" name="all" />
+      <el-tab-pane label="Hoạt động" name="active" />
+      <el-tab-pane label="Ngừng hoạt động" name="inactive" />
+      <el-tab-pane label="Hết hàng" name="outofstock" />
     </el-tabs>
 
     <div class="table-container">
+      <!-- THAY cả khối .filters-bar hiện tại bằng khối dưới -->
       <div class="filters-bar">
-        <el-input
-          v-model="searchQuery"
-          placeholder="Tìm theo mã, tên sản phẩm..."
-          clearable
-          :prefix-icon="Search"
-        />
+        <div class="search-input-wrapper">
+          <el-input
+            v-model="searchQuery"
+            placeholder="Tìm theo mã, tên sản phẩm, nhãn hiệu..."
+            clearable
+            :prefix-icon="Search"
+          />
+        </div>
+
         <div v-if="!isMobile" class="advanced-filters">
-          <el-button
-            >Loại sản phẩm
-            <el-icon class="el-icon--right"><ArrowDown /></el-icon
-          ></el-button>
-          <el-button
-            >Bộ lọc khác <el-icon class="el-icon--right"><Filter /></el-icon
-          ></el-button>
+          <el-select
+            v-model="typeFilter"
+            placeholder="Loại sản phẩm"
+            clearable
+            class="adv-select"
+          >
+            <el-option
+              v-for="t in uniqueTypes"
+              :key="t"
+              :label="t"
+              :value="t"
+            />
+          </el-select>
+
+          <el-select
+            v-model="brandFilter"
+            placeholder="Nhãn hiệu"
+            clearable
+            class="adv-select"
+          >
+            <el-option
+              v-for="b in uniqueBrands"
+              :key="b"
+              :label="b"
+              :value="b"
+            />
+          </el-select>
+
+          <el-switch v-model="onlyWithImage" active-text="Có ảnh" />
         </div>
       </div>
 
-      <el-table v-if="!isMobile" :data="pagedProducts" style="width: 100%">
+      <!-- Bulk actions -->
+      <div v-if="!isMobile && multipleSelection.length > 0" class="bulk-bar">
+        <span>Đã chọn {{ multipleSelection.length }} sản phẩm</span>
+        <div class="bulk-actions">
+          <el-button size="small" @click="bulkActivate(true)"
+            >Bật hoạt động</el-button
+          >
+          <el-button size="small" @click="bulkActivate(false)"
+            >Tắt hoạt động</el-button
+          >
+          <el-button size="small" type="danger" @click="bulkDelete"
+            >Xoá</el-button
+          >
+        </div>
+      </div>
+
+      <!-- DESKTOP TABLE -->
+      <el-table
+        v-if="!isMobile"
+        :data="pagedProducts"
+        v-loading="isLoading"
+        style="width: 100%"
+        @selection-change="onSelectionChange"
+      >
         <el-table-column type="selection" width="55" />
-        <el-table-column label="Sản phẩm" min-width="300">
+        <el-table-column label="Sản phẩm" min-width="320">
           <template #default="scope">
             <div class="product-info">
-              <el-image class="product-image" :src="scope.row.imageUrl" lazy />
-              <span class="product-name">{{ scope.row.name }}</span>
+              <el-image class="product-image" :src="scope.row.imageUrl" lazy>
+                <template #error>
+                  <div class="image-slot">
+                    <el-icon><Picture /></el-icon>
+                  </div>
+                </template>
+              </el-image>
+              <div class="product-meta">
+                <div class="product-name">{{ scope.row.name }}</div>
+                <div class="product-sub">
+                  #{{ scope.row.id }} · {{ scope.row.brand || "—" }} ·
+                  {{ scope.row.type || "—" }}
+                </div>
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Trạng thái" width="140">
+        <el-table-column label="Trạng thái" width="160">
           <template #default="scope">
             <el-tag
               :type="scope.row.isActive ? 'success' : 'info'"
@@ -67,12 +133,37 @@
         />
         <el-table-column prop="type" label="Loại" width="180" />
         <el-table-column prop="brand" label="Nhãn hiệu" width="180" />
+        <el-table-column label="Thao tác" width="140" align="center">
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :icon="Edit"
+                circle
+                @click="openForm(scope.row)"
+              />
+              <el-button
+                size="small"
+                :icon="Delete"
+                type="danger"
+                circle
+                @click="handleDelete(scope.row)"
+              />
+            </div>
+          </template>
+        </el-table-column>
       </el-table>
 
+      <!-- MOBILE LIST -->
       <div v-else class="mobile-card-list">
         <div v-for="item in pagedProducts" :key="item.id" class="mobile-card">
           <div class="card-header product-info">
-            <el-image class="product-image" :src="item.imageUrl" lazy />
+            <el-image class="product-image" :src="item.imageUrl" lazy>
+              <template #error
+                ><div class="image-slot">
+                  <el-icon><Picture /></el-icon></div
+              ></template>
+            </el-image>
             <div class="card-title">{{ item.name }}</div>
           </div>
           <div class="card-body">
@@ -89,17 +180,32 @@
               >
             </div>
             <div class="card-row">
-              <span class="card-label">Tồn kho</span>
-              <span class="card-value">{{ item.stock }}</span>
+              <span class="card-label">Tồn kho</span
+              ><span class="card-value">{{ item.stock }}</span>
             </div>
             <div class="card-row">
-              <span class="card-label">Loại</span>
-              <span class="card-value">{{ item.type }}</span>
+              <span class="card-label">Loại</span
+              ><span class="card-value">{{ item.type }}</span>
             </div>
             <div class="card-row">
-              <span class="card-label">Nhãn hiệu</span>
-              <span class="card-value">{{ item.brand }}</span>
+              <span class="card-label">Nhãn hiệu</span
+              ><span class="card-value">{{ item.brand }}</span>
             </div>
+          </div>
+          <div class="card-footer">
+            <el-button
+              size="small"
+              :icon="Edit"
+              circle
+              @click="openForm(item)"
+            />
+            <el-button
+              size="small"
+              type="danger"
+              :icon="Delete"
+              circle
+              @click="handleDelete(item)"
+            />
           </div>
         </div>
       </div>
@@ -115,20 +221,48 @@
         v-model:current-page="currentPage"
       />
     </div>
+
+    <!-- FORM COMPONENT -->
+    <product-form
+      :visible="dialogVisible"
+      :product="currentProduct"
+      @close="closeForm"
+      @submit="handleFormSubmit"
+      style="max-width: 450px"
+    />
+
+    <!-- hidden file input for import -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept=".csv"
+      style="display: none"
+      @change="onFileChosen"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { ElMessageBox, ElMessage, ElNotification } from "element-plus";
 import {
   Search,
   Plus,
   Upload,
   Download,
-  ArrowDown,
-  Filter,
   Picture,
+  Edit,
+  Delete,
 } from "@element-plus/icons-vue";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/productService";
+import ProductForm from "@/components/ProductForm.vue";
+
+// --- Responsive ---
 const isMobile = ref(false);
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
@@ -136,74 +270,353 @@ const checkScreenSize = () => {
 onMounted(() => {
   checkScreenSize();
   window.addEventListener("resize", checkScreenSize);
+  fetchProducts();
 });
 onBeforeUnmount(() => {
   window.removeEventListener("resize", checkScreenSize);
 });
 
+// --- State ---
 const searchQuery = ref("");
 const activeTab = ref("all");
+const typeFilter = ref("");
+const brandFilter = ref("");
+const onlyWithImage = ref(false);
 const currentPage = ref(1);
 const pageSize = 8;
-const products = ref([
-  {
-    id: 1,
-    name: "Kem dưỡng ẩm Nivea Soft 200ml",
-    imageUrl: "https://i.imgur.com/8mB3H6f.png",
-    stock: 150,
-    type: "Chăm sóc da mặt",
-    brand: "Nivea",
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: "Mặt nạ ngủ Laneige",
-    imageUrl: "https://i.imgur.com/sC7t1qg.png",
-    stock: 88,
-    type: "Chăm sóc da mặt",
-    brand: "Laneige",
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: "Kem dưỡng V7 Toning Light",
-    imageUrl: "https://i.imgur.com/L1dC6dC.png",
-    stock: 0,
-    type: "Chăm sóc da mặt",
-    brand: "Dr.Jart+",
-    isActive: false,
-  },
-]);
-const filteredProducts = computed(() => {
-  let filtered = products.value;
-  if (searchQuery.value)
-    filtered = filtered.filter((p) =>
-      p.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    );
-  switch (activeTab.value) {
-    case "active":
-      return filtered.filter((p) => p.isActive);
-    case "inactive":
-      return filtered.filter((p) => !p.isActive);
-    case "outofstock":
-      return filtered.filter((p) => p.stock === 0);
-    default:
-      return filtered;
+const products = ref([]);
+const isLoading = ref(true);
+const dialogVisible = ref(false);
+const currentProduct = ref(null);
+
+// --- Fetch ---
+const fetchProducts = async () => {
+  isLoading.value = true;
+  try {
+    const response = await getProducts();
+    // kỳ vọng response.data là mảng sản phẩm {id,name,brand,type,stock,isActive,imageUrl}
+    products.value = Array.isArray(response.data) ? response.data : [];
+  } catch (e) {
+    ElMessage.error("Không thể tải danh sách sản phẩm.");
+  } finally {
+    isLoading.value = false;
   }
+};
+
+// --- Filters ---
+const uniqueBrands = computed(() =>
+  Array.from(new Set(products.value.map((p) => p.brand).filter(Boolean)))
+);
+const uniqueTypes = computed(() =>
+  Array.from(new Set(products.value.map((p) => p.type).filter(Boolean)))
+);
+
+const filteredProducts = computed(() => {
+  let arr = products.value;
+  const q = searchQuery.value.trim().toLowerCase();
+  if (q) {
+    arr = arr.filter(
+      (p) =>
+        (p.name || "").toLowerCase().includes(q) ||
+        String(p.id).includes(q) ||
+        (p.brand || "").toLowerCase().includes(q)
+    );
+  }
+  if (activeTab.value === "active") arr = arr.filter((p) => p.isActive);
+  if (activeTab.value === "inactive") arr = arr.filter((p) => !p.isActive);
+  if (activeTab.value === "outofstock")
+    arr = arr.filter((p) => Number(p.stock) === 0);
+  if (typeFilter.value) arr = arr.filter((p) => p.type === typeFilter.value);
+  if (brandFilter.value) arr = arr.filter((p) => p.brand === brandFilter.value);
+  if (onlyWithImage.value) arr = arr.filter((p) => !!p.imageUrl);
+  return arr;
 });
+
 const pagedProducts = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   return filteredProducts.value.slice(start, start + pageSize);
 });
-const addProduct = () => {};
+
+watch([searchQuery, activeTab, typeFilter, brandFilter, onlyWithImage], () => {
+  currentPage.value = 1;
+});
+
+// --- Selection & bulk actions ---
+const multipleSelection = ref([]);
+const onSelectionChange = (rows) => {
+  multipleSelection.value = rows;
+};
+
+const bulkActivate = async (isActive) => {
+  const rows = multipleSelection.value;
+  if (rows.length === 0) return;
+  try {
+    await ElMessageBox.confirm(
+      `Áp dụng trạng thái "${isActive ? "Hoạt động" : "Ngừng hoạt động"}" cho ${
+        rows.length
+      } sản phẩm?`,
+      "Xác nhận",
+      { type: "warning" }
+    );
+  } catch {
+    return;
+  }
+  // Gọi lần lượt updateProduct (có thể tối ưu bằng batch API nếu backend hỗ trợ)
+  isLoading.value = true;
+  try {
+    for (const r of rows) {
+      await updateProduct(r.id, { isActive });
+    }
+    ElNotification({
+      title: "Thành công",
+      message: "Đã cập nhật trạng thái hàng loạt.",
+      type: "success",
+    });
+    await fetchProducts();
+  } catch (e) {
+    ElMessage.error("Cập nhật hàng loạt thất bại.");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const bulkDelete = async () => {
+  const rows = multipleSelection.value;
+  if (rows.length === 0) return;
+  try {
+    await ElMessageBox.confirm(
+      `Xoá ${rows.length} sản phẩm đã chọn?`,
+      "Xác nhận xoá",
+      { type: "warning" }
+    );
+  } catch {
+    return;
+  }
+  isLoading.value = true;
+  try {
+    for (const r of rows) {
+      await deleteProduct(r.id);
+    }
+    ElMessage.success("Đã xoá sản phẩm đã chọn");
+    await fetchProducts();
+  } catch {
+    ElMessage.error("Xoá hàng loạt thất bại.");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// --- CRUD ---
+const openForm = (product = null) => {
+  currentProduct.value = product;
+  dialogVisible.value = true;
+};
+const closeForm = () => {
+  dialogVisible.value = false;
+  currentProduct.value = null;
+};
+
+const handleFormSubmit = async (formData) => {
+  try {
+    if (currentProduct.value) {
+      await updateProduct(currentProduct.value.id, formData);
+      ElMessage.success("Cập nhật sản phẩm thành công!");
+    } else {
+      await createProduct(formData);
+      ElMessage.success("Tạo sản phẩm thành công!");
+    }
+    await fetchProducts();
+    closeForm();
+  } catch {
+    ElMessage.error("Đã có lỗi xảy ra.");
+  }
+};
+
+const handleDelete = (product) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" không?`,
+    "Xác nhận xóa",
+    { confirmButtonText: "Xóa", cancelButtonText: "Hủy", type: "warning" }
+  )
+    .then(async () => {
+      try {
+        await deleteProduct(product.id);
+        ElMessage.success("Đã xóa sản phẩm thành công!");
+        fetchProducts();
+      } catch {
+        ElMessage.error("Xóa sản phẩm thất bại.");
+      }
+    })
+    .catch(() => {});
+};
+
+// --- Export/Import ---
+const handleExport = () => {
+  const headers = [
+    "ID",
+    "Name",
+    "Brand",
+    "Type",
+    "Stock",
+    "IsActive",
+    "ImageURL",
+  ];
+  const rows = filteredProducts.value.map((p) => [
+    p.id,
+    esc(p.name),
+    esc(p.brand),
+    esc(p.type),
+    p.stock,
+    p.isActive,
+    esc(p.imageUrl),
+  ]);
+  const csv = [
+    headers.join(","),
+    ...rows.map((r) => r.map(csvCell).join(",")),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "products.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+  ElMessage.success("Đã xuất file thành công!");
+};
+
+const esc = (v) => (v == null ? "" : String(v));
+const csvCell = (v) => {
+  const s = esc(v);
+  if (s.includes(",") || s.includes('"') || s.includes("\n"))
+    return '"' + s.replaceAll('"', '""') + '"';
+  return s;
+};
+
+const fileInput = ref(null);
+const triggerImport = () => fileInput.value?.click();
+
+const onFileChosen = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    try {
+      const text = evt.target.result;
+      const rows = parseCSV(String(text));
+      // map columns (case-insensitive)
+      const cols = rows.shift() || [];
+      const idx = (name) =>
+        cols.findIndex((c) => String(c).trim().toLowerCase() === name);
+      const idIdx = idx("id"),
+        nameIdx = idx("name"),
+        brandIdx = idx("brand"),
+        typeIdx = idx("type"),
+        stockIdx = idx("stock"),
+        activeIdx = idx("isactive"),
+        imgIdx = idx("imageurl");
+      if (nameIdx === -1) throw new Error("Thiếu cột Name trong CSV");
+
+      isLoading.value = true;
+      // upsert từng dòng
+      for (const r of rows) {
+        const payload = {
+          name: r[nameIdx] ?? "",
+          brand: brandIdx > -1 ? r[brandIdx] : "",
+          type: typeIdx > -1 ? r[typeIdx] : "",
+          stock: stockIdx > -1 ? Number(r[stockIdx] || 0) : 0,
+          isActive:
+            activeIdx > -1
+              ? String(r[activeIdx]).toLowerCase().trim() === "true"
+              : true,
+          imageUrl: imgIdx > -1 ? r[imgIdx] : "",
+        };
+        if (idIdx > -1 && r[idIdx]) {
+          // update nếu có ID
+          await updateProduct(r[idIdx], payload);
+        } else {
+          await createProduct(payload);
+        }
+      }
+      ElNotification({
+        title: "Nhập file thành công",
+        message: "Dữ liệu đã được cập nhật.",
+        type: "success",
+      });
+      await fetchProducts();
+    } catch (err) {
+      ElMessage.error("Lỗi nhập file: " + (err?.message || "Không xác định"));
+    } finally {
+      isLoading.value = false;
+      e.target.value = "";
+    }
+  };
+  reader.readAsText(file);
+};
+
+// CSV parser đơn giản (hỗ trợ dấu phẩy trong dấu nháy)
+function parseCSV(text) {
+  const rows = [];
+  let cur = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += ch;
+      }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ",") {
+        cur.push(cell);
+        cell = "";
+      } else if (ch === "\n" || ch === "\r") {
+        if (cell !== "" || cur.length > 0) {
+          cur.push(cell);
+          rows.push(cur);
+          cur = [];
+          cell = "";
+        }
+        // skip \r\n pairs gracefully
+      } else {
+        cell += ch;
+      }
+    }
+  }
+  if (cell !== "" || cur.length > 0) {
+    cur.push(cell);
+    rows.push(cur);
+  }
+  // cleanup empty trailing newline
+  return rows.filter((r) => r.length > 0);
+}
 </script>
 
 <style scoped>
-/* @import "@/style/responsive_style.css"; */
 .product-info {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.product-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.product-name {
+  font-weight: 600;
+  color: #111827;
+}
+.product-sub {
+  font-size: 12px;
+  color: #6b7280;
 }
 .product-image {
   width: 48px;
@@ -212,22 +625,34 @@ const addProduct = () => {};
   flex-shrink: 0;
   border: 1px solid #f3f4f6;
 }
-.product-name {
-  font-weight: 500;
-  color: #111827;
-  white-space: normal;
-}
-/* ... Các style khác cho desktop */
-
-/* Thêm style cho Tabs trên mobile */
-.product-list-page :deep(.el-tabs__nav) {
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 24px;
 }
-.product-list-page :deep(.el-tabs__item) {
-  flex: 1;
-  text-align: center;
+.action-buttons-group {
+  display: flex;
+  gap: 8px;
 }
-/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+
+.bulk-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #eef2f7;
+}
+.bulk-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .page-container {
   padding: 16px;
   background-color: #f9fafb;
@@ -248,7 +673,6 @@ const addProduct = () => {};
   color: #111827;
 }
 
-/* ----- CONTAINERS & BARS ----- */
 .table-container {
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
@@ -274,7 +698,6 @@ const addProduct = () => {};
   justify-content: center;
 }
 
-/* ----- MOBILE CARD STYLES ----- */
 .mobile-card-list {
   padding: 16px;
 }
@@ -322,7 +745,6 @@ const addProduct = () => {};
   gap: 8px;
 }
 
-/* ----- ELEMENT PLUS CUSTOMIZATION ----- */
 .page-container :deep(.el-button) {
   border-radius: 6px;
   font-weight: 500;
@@ -332,8 +754,19 @@ const addProduct = () => {};
   box-shadow: none !important;
   border: 1px solid #d1d5db;
 }
+.page-container :deep(.el-table th) {
+  background-color: #f9fafb !important;
+  color: #6b7280;
+  font-weight: 600;
+}
+.page-container :deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid #f3f4f6;
+  padding: 14px 0;
+}
+.page-container :deep(.el-table .el-table__row:hover > td) {
+  background-color: #f9fafb !important;
+}
 
-/* ----- DESKTOP OVERRIDES ----- */
 @media (min-width: 768px) {
   .page-container {
     padding: 24px 32px;
@@ -352,25 +785,50 @@ const addProduct = () => {};
     border-color: #2563eb;
   }
   .page-container :deep(.el-input) {
-    max-width: 400px;
-  }
-  .page-container :deep(.el-table th) {
-    background-color: #f9fafb !important;
-    color: #6b7280;
-    font-weight: 600;
-  }
-  .page-container :deep(.el-table td.el-table__cell) {
-    border-bottom: 1px solid #f3f4f6;
-    padding: 14px 0;
-  }
-  .page-container :deep(.el-table .el-table__row:hover > td) {
-    background-color: #f9fafb !important;
+    max-width: 420px;
   }
   .page-container
     :deep(
       .el-pagination.is-background .el-pager li:not(.is-disabled).is-active
     ) {
     background-color: #2563eb;
+  }
+}
+
+/* căn đều 2 bên & canh giữa theo chiều dọc */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ô tìm kiếm chiếm phần còn lại */
+.search-input-wrapper {
+  flex: 1;
+  min-width: 260px;
+}
+
+/* cụm lọc nâng cao nằm ngang, auto wrap khi chật */
+.advanced-filters {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  gap: 12px;
+}
+
+/* cố định bề ngang của select để không nhảy hàng sớm */
+.advanced-filters .adv-select {
+  width: 220px;
+}
+
+/* dưới ~1024px thì cho cụm lọc xếp dọc gọn */
+@media (max-width: 1024px) {
+  .advanced-filters {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
   }
 }
 </style>

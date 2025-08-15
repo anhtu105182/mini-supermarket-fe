@@ -22,6 +22,7 @@ import Orders from "@/views/Orders/Orders.vue"; // danh sách đơn hàng
 import Draft_Orders from "@/views/Orders/Draft_Orders.vue"; // đơn hàng nháp
 import Order_Returns from "@/views/Orders/Order_Returns.vue"; // trả hàng
 import Checkouts from "@/views/Orders/Checkouts.vue"; // đơn hàng chưa hoàn tất
+import OrderForm from "@/views/Orders/OrderForm.vue"; // form tạo và sửa đơn hàng
 
 // các trang sales
 import Discounts from "@/views/Sales/Discounts.vue"; // giảm giá
@@ -119,6 +120,16 @@ const routes = [
         path: "checkouts",
         name: "Checkouts",
         component: Checkouts,
+      },
+      {
+        path: "orders/new",
+        name: "NewOrder",
+        component: OrderForm,
+      },
+      {
+        path: "orders/edit/:id",
+        name: "EditOrder",
+        component: OrderForm,
       },
       {
         path: "discounts",

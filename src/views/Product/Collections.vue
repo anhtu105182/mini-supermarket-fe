@@ -2,7 +2,7 @@
   <div class="page-container">
     <div class="page-header">
       <h1 class="page-title">Danh mục sản phẩm</h1>
-      <el-button type="primary" :icon="Plus" @click="addCollection">
+      <el-button type="primary" :icon="Plus" @click="openForm()">
         Thêm danh mục
       </el-button>
     </div>
@@ -17,7 +17,7 @@
         />
       </div>
 
-      <el-table v-if="!isMobile" :data="pagedCollections" style="width: 100%">
+      <el-table v-if="!isMobile" :data="pagedCollections" v-loading="isLoading" style="width: 100%">
         <el-table-column prop="code" label="Mã danh mục" width="180" />
         <el-table-column prop="name" label="Tên danh mục" min-width="300" />
         <el-table-column
@@ -27,10 +27,12 @@
           align="center"
         />
         <el-table-column label="Thao tác" width="120" align="center">
-          <div class="action-buttons">
-            <el-button size="small" :icon="Edit" circle />
-            <el-button size="small" type="danger" :icon="Delete" circle />
-          </div>
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button size="small" :icon="Edit" circle @click="openForm(scope.row)" />
+              <el-button size="small" type="danger" :icon="Delete" circle @click="handleDelete(scope.row)" />
+            </div>
+          </template>
         </el-table-column>
       </el-table>
 
@@ -54,8 +56,8 @@
             </div>
           </div>
           <div class="card-footer">
-            <el-button size="small" :icon="Edit" circle />
-            <el-button size="small" type="danger" :icon="Delete" circle />
+            <el-button size="small" :icon="Edit" circle @click="openForm(item)" />
+            <el-button size="small" type="danger" :icon="Delete" circle @click="handleDelete(item)" />
           </div>
         </div>
       </div>
@@ -71,48 +73,66 @@
         v-model:current-page="currentPage"
       />
     </div>
+    
+    <collection-form 
+      :visible="dialogVisible" 
+      :collection="currentCollection" 
+      @close="closeForm" 
+      @submit="handleFormSubmit"
+    />
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { Search, Plus, Edit, Delete } from "@element-plus/icons-vue";
+import { ElMessageBox, ElMessage } from "element-plus";
+import CollectionForm from "@/components/CollectionForm.vue";
+import {
+  getCollections,
+  createCollection,
+  updateCollection,
+  deleteCollection,
+} from "@/services/catalogService";
+
 const isMobile = ref(false);
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
 };
-onMounted(() => {
-  checkScreenSize();
-  window.addEventListener("resize", checkScreenSize);
-});
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", checkScreenSize);
-});
 
 const search = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
-const collections = ref([
-  { code: "DM001", name: "Sữa, Bơ & Phô mai", productCount: 12 },
-  { code: "DM002", name: "Bánh kẹo các loại", productCount: 25 },
-  { code: "DM003", name: "Nước giải khát & Trà", productCount: 18 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-  { code: "DM004", name: "Mì, Cháo, Phở ăn liền", productCount: 10 },
-]);
+const collections = ref([]);
+const isLoading = ref(true);
+
+const dialogVisible = ref(false);
+const currentCollection = ref(null);
+
+const fetchCollections = async () => {
+  isLoading.value = true;
+  try {
+    const response = await getCollections();
+    collections.value = response.data;
+  } catch (error) { 
+    console.error(error);
+    ElMessage.error("Không thể tải danh sách danh mục.");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  checkScreenSize();
+  window.addEventListener("resize", checkScreenSize);
+  fetchCollections();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", checkScreenSize);
+});
+
 const filteredCollections = computed(() => {
   if (!search.value) return collections.value;
   return collections.value.filter(
@@ -121,11 +141,60 @@ const filteredCollections = computed(() => {
       item.code.toLowerCase().includes(search.value.toLowerCase())
   );
 });
+
 const pagedCollections = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   return filteredCollections.value.slice(start, start + pageSize);
 });
-const addCollection = () => {};
+
+const openForm = (collection = null) => {
+  currentCollection.value = collection;
+  dialogVisible.value = true;
+};
+
+const closeForm = () => {
+  dialogVisible.value = false;
+  currentCollection.value = null;
+};
+
+const handleFormSubmit = async (formData) => {
+  try {
+    if (currentCollection.value) {
+      await updateCollection(currentCollection.value.id, formData);
+      ElMessage.success("Cập nhật danh mục thành công!");
+    } else {
+      await createCollection(formData);
+      ElMessage.success("Tạo danh mục thành công!");
+    }
+    fetchCollections();
+    closeForm();
+  } catch (error) {
+    ElMessage.error("Đã có lỗi xảy ra.");
+  }
+};
+
+const handleDelete = (collection) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa danh mục "${collection.name}" không?`,
+    "Xác nhận xóa",
+    {
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(async () => {
+      try {
+        await deleteCollection(collection.id);
+        ElMessage.success("Đã xóa danh mục thành công!");
+        fetchCollections();
+      } catch (error) {
+        ElMessage.error("Xóa danh mục thất bại.");
+      }
+    })
+    .catch(() => {});
+};
+
 </script>
 
 <style scoped>

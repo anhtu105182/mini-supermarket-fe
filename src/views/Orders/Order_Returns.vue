@@ -28,7 +28,13 @@
         </el-select>
       </div>
 
-      <el-table v-if="!isMobile" :data="pagedReturns" style="width: 100%">
+      <!-- DESKTOP TABLE -->
+      <el-table
+        v-if="!isMobile"
+        :data="pagedReturns"
+        style="width: 100%"
+        v-loading="isLoading"
+      >
         <el-table-column prop="returnCode" label="Mã phiếu trả" width="140" />
         <el-table-column prop="originalOrderCode" label="Đơn gốc" width="120" />
         <el-table-column
@@ -50,18 +56,27 @@
               :type="getStatusType(scope.row.status)"
               effect="light"
               size="small"
+              >{{ scope.row.status }}</el-tag
             >
-              {{ scope.row.status }}
-            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Thao tác" width="120" align="center">
-          <div class="action-buttons">
-            <el-button size="small" :icon="View" text bg>Xem</el-button>
-          </div>
+        <el-table-column label="Thao tác" width="160" align="center">
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :icon="View"
+                text
+                bg
+                @click="openDetail(scope.row)"
+                >Xem</el-button
+              >
+            </div>
+          </template>
         </el-table-column>
       </el-table>
 
+      <!-- MOBILE LIST -->
       <div v-else class="mobile-card-list">
         <div
           v-for="item in pagedReturns"
@@ -77,28 +92,32 @@
               :type="getStatusType(item.status)"
               effect="light"
               size="small"
+              >{{ item.status }}</el-tag
             >
-              {{ item.status }}
-            </el-tag>
           </div>
           <div class="card-body">
             <div class="card-row">
-              <span class="card-label">Đơn gốc</span>
-              <span class="card-value">{{ item.originalOrderCode }}</span>
+              <span class="card-label">Đơn gốc</span
+              ><span class="card-value">{{ item.originalOrderCode }}</span>
             </div>
             <div class="card-row">
-              <span class="card-label">Ngày trả</span>
-              <span class="card-value">{{ item.returnDate }}</span>
+              <span class="card-label">Ngày trả</span
+              ><span class="card-value">{{ item.returnDate }}</span>
             </div>
             <div class="card-row">
-              <span class="card-label">Tiền hoàn trả</span>
-              <span class="card-value refund-amount">{{
+              <span class="card-label">Tiền hoàn trả</span
+              ><span class="card-value refund-amount">{{
                 formatCurrency(item.refundAmount)
               }}</span>
             </div>
           </div>
           <div class="card-footer">
-            <el-button size="small" :icon="View" text bg
+            <el-button
+              size="small"
+              :icon="View"
+              text
+              bg
+              @click="openDetail(item)"
               >Xem chi tiết</el-button
             >
           </div>
@@ -106,7 +125,7 @@
       </div>
 
       <el-empty
-        v-if="pagedReturns.length === 0"
+        v-if="!isLoading && pagedReturns.length === 0"
         description="Không có đơn trả hàng nào"
       />
     </div>
@@ -122,12 +141,135 @@
         v-model:current-page="currentPage"
       />
     </div>
+
+    <!-- DETAIL DIALOG -->
+    <el-dialog
+      v-model="detailVisible"
+      title="Chi tiết đơn trả hàng"
+      width="560"
+    >
+      <div v-if="selectedReturn" class="detail-grid">
+        <div class="detail-row">
+          <span class="detail-label">Mã phiếu:</span
+          ><span class="detail-value">{{ selectedReturn.returnCode }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Đơn gốc:</span
+          ><span class="detail-value">{{
+            selectedReturn.originalOrderCode
+          }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Khách hàng:</span
+          ><span class="detail-value">{{ selectedReturn.customerName }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Ngày trả:</span
+          ><span class="detail-value">{{ selectedReturn.returnDate }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Tiền hoàn:</span
+          ><span class="detail-value">{{
+            formatCurrency(selectedReturn.refundAmount)
+          }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Trạng thái:</span
+          ><el-tag
+            :type="getStatusType(selectedReturn.status)"
+            size="small"
+            effect="light"
+            >{{ selectedReturn.status }}</el-tag
+          >
+        </div>
+        <div class="detail-row" v-if="selectedReturn.note">
+          <span class="detail-label">Ghi chú:</span
+          ><span class="detail-value">{{ selectedReturn.note }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="detailVisible = false">Đóng</el-button>
+          <el-button
+            v-if="selectedReturn?.status === 'Chờ xử lý'"
+            @click="markAsWarehoused(selectedReturn)"
+            >Nhập kho</el-button
+          >
+          <el-button
+            type="success"
+            v-if="
+              selectedReturn &&
+              (selectedReturn.status === 'Chờ xử lý' ||
+                selectedReturn.status === 'Đã nhập kho')
+            "
+            @click="markAsRefunded(selectedReturn)"
+            >Hoàn tiền</el-button
+          >
+          <el-button
+            type="danger"
+            v-if="selectedReturn?.status === 'Chờ xử lý'"
+            @click="rejectReturn(selectedReturn)"
+            >Từ chối</el-button
+          >
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- CREATE DIALOG -->
+    <el-dialog v-model="createVisible" title="Tạo đơn trả hàng" width="560">
+      <el-form
+        ref="createFormRef"
+        :model="form"
+        :rules="rules"
+        label-width="130px"
+      >
+        <el-form-item label="Đơn gốc" prop="originalOrderCode">
+          <el-input v-model="form.originalOrderCode" placeholder="VD: DH1234" />
+        </el-form-item>
+        <el-form-item label="Khách hàng" prop="customerName">
+          <el-input v-model="form.customerName" placeholder="Tên khách" />
+        </el-form-item>
+        <el-form-item label="Ngày trả" prop="returnDate">
+          <el-date-picker
+            v-model="form.returnDate"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="Chọn ngày"
+          />
+        </el-form-item>
+        <el-form-item label="Tiền hoàn trả" prop="refundAmount">
+          <el-input
+            v-model.number="form.refundAmount"
+            type="number"
+            min="0"
+            placeholder="0"
+          />
+        </el-form-item>
+        <el-form-item label="Ghi chú">
+          <el-input
+            v-model="form.note"
+            type="textarea"
+            :rows="2"
+            placeholder="Lý do, mô tả tình trạng hàng..."
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="createVisible = false">Huỷ</el-button>
+          <el-button type="primary" :loading="creating" @click="submitCreate"
+            >Tạo</el-button
+          >
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { Search, Plus, View } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
 
 // --- RESPONSIVE STATE ---
 const isMobile = ref(false);
@@ -142,12 +284,16 @@ onBeforeUnmount(() => {
   window.removeEventListener("resize", checkScreenSize);
 });
 
-// --- COMPONENT LOGIC ---
+// --- LOADING ---
+const isLoading = ref(true);
+
+// --- LIST/PAGINATION STATE ---
 const search = ref("");
 const statusFilter = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
 
+// --- DATA ---
 const returns = ref([
   {
     returnCode: "RT001",
@@ -156,6 +302,7 @@ const returns = ref([
     returnDate: "2025-08-01",
     refundAmount: 250000,
     status: "Đã hoàn tiền",
+    note: "",
   },
   {
     returnCode: "RT002",
@@ -164,6 +311,7 @@ const returns = ref([
     returnDate: "2025-07-30",
     refundAmount: 180000,
     status: "Chờ xử lý",
+    note: "",
   },
   {
     returnCode: "RT003",
@@ -172,6 +320,7 @@ const returns = ref([
     returnDate: "2025-07-28",
     refundAmount: 500000,
     status: "Đã nhập kho",
+    note: "",
   },
   {
     returnCode: "RT004",
@@ -180,11 +329,19 @@ const returns = ref([
     returnDate: "2025-07-25",
     refundAmount: 95000,
     status: "Đã từ chối",
+    note: "Không đúng điều kiện đổi trả",
   },
 ]);
 
-const formatCurrency = (value) => value.toLocaleString("vi-VN") + "đ";
+// simulate initial loading
+onMounted(() => {
+  setTimeout(() => {
+    isLoading.value = false;
+  }, 500);
+});
 
+// --- UTILS ---
+const formatCurrency = (value) => (value ?? 0).toLocaleString("vi-VN") + "đ";
 const getStatusType = (status) => {
   if (status === "Đã hoàn tiền" || status === "Đã nhập kho") return "success";
   if (status === "Chờ xử lý") return "warning";
@@ -192,14 +349,14 @@ const getStatusType = (status) => {
   return "info";
 };
 
+// search + filter + pagination
 const filteredReturns = computed(() => {
+  const q = search.value.trim().toLowerCase();
   return returns.value.filter((item) => {
-    const searchMatch = search.value
-      ? item.returnCode.toLowerCase().includes(search.value.toLowerCase()) ||
-        item.originalOrderCode
-          .toLowerCase()
-          .includes(search.value.toLowerCase()) ||
-        item.customerName.toLowerCase().includes(search.value.toLowerCase())
+    const searchMatch = q
+      ? item.returnCode.toLowerCase().includes(q) ||
+        item.originalOrderCode.toLowerCase().includes(q) ||
+        item.customerName.toLowerCase().includes(q)
       : true;
     const statusMatch = statusFilter.value
       ? item.status === statusFilter.value
@@ -213,15 +370,174 @@ const pagedReturns = computed(() => {
   return filteredReturns.value.slice(start, start + pageSize);
 });
 
-const createReturnOrder = () => {};
+watch([search, statusFilter], () => {
+  currentPage.value = 1;
+});
+
+// --- DETAIL DIALOG ---
+const selectedReturn = ref(null);
+const detailVisible = ref(false);
+const openDetail = (row) => {
+  selectedReturn.value = row;
+  detailVisible.value = true;
+};
+
+const markAsRefunded = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `Xác nhận đã hoàn tiền cho phiếu ${row.returnCode}?`,
+      "Xác nhận",
+      { type: "warning", confirmButtonText: "Đã hoàn", cancelButtonText: "Huỷ" }
+    );
+  } catch {
+    return;
+  }
+  // mock API
+  isLoading.value = true;
+  setTimeout(() => {
+    row.status = "Đã hoàn tiền";
+    ElNotification({
+      title: "Thành công",
+      message: "Đã cập nhật trạng thái hoàn tiền.",
+      type: "success",
+    });
+    isLoading.value = false;
+  }, 600);
+};
+
+const markAsWarehoused = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `Xác nhận nhập kho hàng trả của phiếu ${row.returnCode}?`,
+      "Xác nhận",
+      {
+        type: "warning",
+        confirmButtonText: "Nhập kho",
+        cancelButtonText: "Huỷ",
+      }
+    );
+  } catch {
+    return;
+  }
+  isLoading.value = true;
+  setTimeout(() => {
+    row.status = "Đã nhập kho";
+    ElMessage.success("Đã cập nhật trạng thái: Đã nhập kho");
+    isLoading.value = false;
+  }, 600);
+};
+
+const rejectReturn = async (row) => {
+  try {
+    const { value, action } = await ElMessageBox.prompt(
+      "Nhập lý do từ chối:",
+      "Từ chối đơn trả",
+      {
+        confirmButtonText: "Từ chối",
+        cancelButtonText: "Huỷ",
+        inputPlaceholder: "VD: Hết thời hạn đổi trả",
+      }
+    );
+    if (action === "confirm") {
+      isLoading.value = true;
+      setTimeout(() => {
+        row.status = "Đã từ chối";
+        row.note = value;
+        ElMessage.warning("Đã từ chối đơn trả");
+        isLoading.value = false;
+      }, 600);
+    }
+  } catch {
+    /* cancelled */
+  }
+};
+
+// --- CREATE DIALOG ---
+const createVisible = ref(false);
+const creating = ref(false);
+const createFormRef = ref();
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const form = ref({
+  originalOrderCode: "",
+  customerName: "",
+  returnDate: todayStr(),
+  refundAmount: 0,
+  note: "",
+});
+
+const rules = {
+  originalOrderCode: [
+    { required: true, message: "Vui lòng nhập mã đơn gốc", trigger: "blur" },
+  ],
+  customerName: [
+    { required: true, message: "Vui lòng nhập tên khách", trigger: "blur" },
+  ],
+  returnDate: [
+    { required: true, message: "Vui lòng chọn ngày trả", trigger: "change" },
+  ],
+  refundAmount: [
+    { required: true, message: "Vui lòng nhập số tiền hoàn", trigger: "blur" },
+    {
+      type: "number",
+      min: 0,
+      message: "Số tiền không hợp lệ",
+      trigger: "blur",
+    },
+  ],
+};
+
+const createReturnOrder = () => {
+  createVisible.value = true;
+  // reset form mỗi lần mở
+  Object.assign(form.value, {
+    originalOrderCode: "",
+    customerName: "",
+    returnDate: todayStr(),
+    refundAmount: 0,
+    note: "",
+  });
+  createFormRef.value?.clearValidate?.();
+};
+
+const generateNextCode = () => {
+  const nums = returns.value.map(
+    (r) => Number(r.returnCode.replace(/\D/g, "")) || 0
+  );
+  const next = Math.max(0, ...nums) + 1;
+  return "RT" + String(next).padStart(3, "0");
+};
+
+const submitCreate = () => {
+  createFormRef.value.validate((valid) => {
+    if (!valid) return;
+    creating.value = true;
+    // mock API
+    setTimeout(() => {
+      returns.value.unshift({
+        returnCode: generateNextCode(),
+        originalOrderCode: form.value.originalOrderCode.trim(),
+        customerName: form.value.customerName.trim(),
+        returnDate: form.value.returnDate,
+        refundAmount: Number(form.value.refundAmount) || 0,
+        status: "Chờ xử lý",
+        note: form.value.note?.trim() || "",
+      });
+      ElNotification({
+        title: "Đã tạo",
+        message: "Tạo đơn trả hàng thành công",
+        type: "success",
+      });
+      creating.value = false;
+      createVisible.value = false;
+    }, 700);
+  });
+};
 </script>
 
 <style scoped>
-/* @import "./responsive-style.css"; Sử dụng file CSS chung */
-
 .refund-amount {
   font-weight: 600;
-  color: #c026d3; /* Màu tím cho tiền bạc :D */
+  color: #c026d3;
 }
 .filters-bar {
   justify-content: space-between;
@@ -241,6 +557,7 @@ const createReturnOrder = () => {};
   justify-content: space-between;
   align-items: flex-start;
 }
+
 /* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
 .page-container {
   padding: 16px;
@@ -331,6 +648,29 @@ const createReturnOrder = () => {};
 .card-footer {
   padding: 8px 16px;
   background-color: #f9fafb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ----- DETAIL DIALOG ----- */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  row-gap: 10px;
+  column-gap: 12px;
+}
+.detail-row {
+  display: contents;
+}
+.detail-label {
+  color: #6b7280;
+}
+.detail-value {
+  color: #111827;
+  font-weight: 500;
+}
+.dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;

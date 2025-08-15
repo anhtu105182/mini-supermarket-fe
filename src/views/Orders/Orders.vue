@@ -150,7 +150,10 @@
 </template>
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { useRouter } from "vue-router";
 import { Search, Plus, View } from "@element-plus/icons-vue";
+
+const router = useRouter();
 
 // --- STATE ---
 const isMobile = ref(false);
@@ -272,7 +275,9 @@ watch([activeTab, search, dateRange], () => {
   currentPage.value = 1;
 });
 
-const createOrder = () => {};
+const createOrder = () => {
+  router.push({ name: 'NewOrder' });
+};
 
 // --- LIFECYCLE HOOKS ---
 onMounted(() => {

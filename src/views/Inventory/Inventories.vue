@@ -3,8 +3,10 @@
     <div class="page-header">
       <h1 class="page-title">Tồn kho sản phẩm</h1>
       <div class="action-buttons-group">
-        <el-button :icon="Switch">Chuyển kho</el-button>
-        <el-button type="primary" :icon="Plus" @click="receiveStock"
+        <el-button :icon="SwitchIcon" @click="openTransferDialog"
+          >Chuyển kho</el-button
+        >
+        <el-button type="primary" :icon="Plus" @click="openReceiveDialog"
           >Nhập kho</el-button
         >
       </div>
@@ -12,31 +14,65 @@
 
     <div class="table-container">
       <div class="filters-bar">
-        <el-input
-          v-model="search"
-          placeholder="Tìm theo mã, tên sản phẩm..."
-          clearable
-          :prefix-icon="Search"
-        />
+        <div class="search-input-wrapper">
+          <el-input
+            v-model="search"
+            placeholder="Tìm theo mã, tên sản phẩm..."
+            clearable
+            :prefix-icon="Search"
+          />
+        </div>
         <div v-if="!isMobile" class="advanced-filters">
-          <el-button
-            >Vị trí kho <el-icon class="el-icon--right"><ArrowDown /></el-icon
-          ></el-button>
-          <el-button
-            >Trạng thái <el-icon class="el-icon--right"><ArrowDown /></el-icon
-          ></el-button>
+          <el-select
+            v-model="locationFilter"
+            placeholder="Vị trí kho"
+            clearable
+            class="adv-select"
+          >
+            <el-option
+              v-for="loc in uniqueLocations"
+              :key="loc"
+              :label="loc"
+              :value="loc"
+            />
+          </el-select>
+          <el-select
+            v-model="statusFilter"
+            placeholder="Trạng thái"
+            clearable
+            class="adv-select"
+          >
+            <el-option
+              v-for="s in statusOptions"
+              :key="s.value"
+              :label="s.label"
+              :value="s.value"
+            />
+          </el-select>
         </div>
       </div>
 
-      <el-table v-if="!isMobile" :data="pagedInventories" style="width: 100%">
-        <el-table-column label="Sản phẩm" min-width="350">
+      <!-- DESKTOP TABLE -->
+      <el-table
+        v-if="!isMobile"
+        :data="pagedInventories"
+        v-loading="isLoading"
+        style="width: 100%"
+      >
+        <el-table-column label="Sản phẩm" min-width="360">
           <template #default="scope">
             <div class="product-info">
               <el-image
                 class="product-image"
                 :src="scope.row.imageUrl"
                 fit="cover"
-              />
+              >
+                <template #error>
+                  <div class="image-slot">
+                    <el-icon><Picture /></el-icon>
+                  </div>
+                </template>
+              </el-image>
               <div>
                 <div class="product-name">{{ scope.row.name }}</div>
                 <div class="product-code">Mã SP: {{ scope.row.code }}</div>
@@ -45,36 +81,48 @@
           </template>
         </el-table-column>
         <el-table-column prop="location" label="Vị trí kho" width="180" />
-        <el-table-column
-          prop="stock"
-          label="Tồn kho"
-          width="150"
-          sortable
-          align="center"
-        >
+        <el-table-column label="Tồn kho" width="160" sortable align="center">
           <template #default="scope">
-            <span style="font-weight: 600">{{ scope.row.stock }}</span>
+            <span class="stock-strong">{{ scope.row.stock }}</span>
             <span class="product-unit"> {{ scope.row.unit }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="Trạng thái" width="150" align="center">
+        <el-table-column label="Trạng thái" width="160" align="center">
           <template #default="scope">
             <el-tag
               :type="getStockStatus(scope.row.stock).type"
               effect="light"
               size="small"
-              >{{ getStockStatus(scope.row.stock).text }}</el-tag
             >
+              {{ getStockStatus(scope.row.stock).text }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Thao tác" width="150" align="center">
-          <div class="action-buttons">
-            <el-button size="small" :icon="Edit" text bg>Sửa</el-button>
-            <el-button size="small" :icon="View" text bg>Lịch sử</el-button>
-          </div>
+        <el-table-column label="Thao tác" width="180" align="center">
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :icon="Edit"
+                text
+                bg
+                @click="openEditDialog(scope.row)"
+                >Sửa</el-button
+              >
+              <el-button
+                size="small"
+                :icon="View"
+                text
+                bg
+                @click="openHistoryDialog(scope.row)"
+                >Lịch sử</el-button
+              >
+            </div>
+          </template>
         </el-table-column>
       </el-table>
 
+      <!-- MOBILE LIST -->
       <div v-else class="mobile-card-list">
         <div
           v-for="item in pagedInventories"
@@ -82,7 +130,12 @@
           class="mobile-card"
         >
           <div class="card-header product-info">
-            <el-image class="product-image" :src="item.imageUrl" fit="cover" />
+            <el-image class="product-image" :src="item.imageUrl" fit="cover">
+              <template #error
+                ><div class="image-slot">
+                  <el-icon><Picture /></el-icon></div
+              ></template>
+            </el-image>
             <div>
               <span class="card-title">{{ item.name }}</span>
               <div class="product-code">Mã SP: {{ item.code }}</div>
@@ -91,10 +144,10 @@
           <div class="card-body">
             <div class="card-row">
               <span class="card-label">Tồn kho</span>
-              <span class="card-value">
-                <span style="font-weight: 600">{{ item.stock }}</span>
-                <span class="product-unit"> {{ item.unit }}</span>
-              </span>
+              <span class="card-value"
+                ><span class="stock-strong">{{ item.stock }}</span
+                ><span class="product-unit"> {{ item.unit }}</span></span
+              >
             </div>
             <div class="card-row">
               <span class="card-label">Trạng thái</span>
@@ -108,16 +161,35 @@
               >
             </div>
             <div class="card-row">
-              <span class="card-label">Vị trí</span>
-              <span class="card-value">{{ item.location }}</span>
+              <span class="card-label">Vị trí</span
+              ><span class="card-value">{{ item.location }}</span>
             </div>
           </div>
           <div class="card-footer">
-            <el-button size="small" :icon="Edit" text bg>Sửa</el-button>
-            <el-button size="small" :icon="View" text bg>Lịch sử</el-button>
+            <el-button
+              size="small"
+              :icon="Edit"
+              text
+              bg
+              @click="openEditDialog(item)"
+              >Sửa</el-button
+            >
+            <el-button
+              size="small"
+              :icon="View"
+              text
+              bg
+              @click="openHistoryDialog(item)"
+              >Lịch sử</el-button
+            >
           </div>
         </div>
       </div>
+
+      <el-empty
+        v-if="!isLoading && pagedInventories.length === 0"
+        description="Không có sản phẩm phù hợp"
+      />
     </div>
 
     <div class="pagination-container">
@@ -130,20 +202,158 @@
         v-model:current-page="currentPage"
       />
     </div>
+
+    <!-- DIALOG: NHẬP KHO -->
+    <el-dialog v-model="receiveVisible" title="Nhập kho" width="520">
+      <el-form :model="receiveForm" label-width="120px" class="dialog-form">
+        <el-form-item label="Sản phẩm">
+          <el-select v-model="receiveForm.code" placeholder="Chọn sản phẩm">
+            <el-option
+              v-for="p in inventories"
+              :key="p.code"
+              :label="`${p.name} · ${p.code}`"
+              :value="p.code"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Số lượng nhập">
+          <el-input-number v-model="receiveForm.quantity" :min="1" />
+        </el-form-item>
+        <el-form-item label="Ghi chú">
+          <el-input
+            v-model="receiveForm.note"
+            placeholder="VD: nhập hàng từ NCC"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="receiveVisible = false">Huỷ</el-button>
+        <el-button type="primary" @click="confirmReceive">Xác nhận</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- DIALOG: CHUYỂN KHO -->
+    <el-dialog v-model="transferVisible" title="Chuyển kho" width="520">
+      <el-form :model="transferForm" label-width="120px" class="dialog-form">
+        <el-form-item label="Sản phẩm">
+          <el-select v-model="transferForm.code" placeholder="Chọn sản phẩm">
+            <el-option
+              v-for="p in inventories"
+              :key="p.code"
+              :label="`${p.name} · ${p.code}`"
+              :value="p.code"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Kho hiện tại">
+          <el-input
+            :model-value="selectedByCode(transferForm.code)?.location || ''"
+            disabled
+          />
+        </el-form-item>
+        <el-form-item label="Chuyển đến kho">
+          <el-select v-model="transferForm.to" placeholder="Chọn kho">
+            <el-option
+              v-for="loc in uniqueLocations"
+              :key="loc"
+              :label="loc"
+              :value="loc"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Ghi chú">
+          <el-input
+            v-model="transferForm.note"
+            placeholder="VD: điều chuyển nội bộ"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="transferVisible = false">Huỷ</el-button>
+        <el-button type="primary" @click="confirmTransfer">Xác nhận</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- DIALOG: SỬA SẢN PHẨM TRONG KHO -->
+    <el-dialog v-model="editVisible" title="Sửa tồn kho" width="600">
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        label-width="130px"
+        class="dialog-form two-cols"
+      >
+        <el-form-item label="Mã sản phẩm">
+          <el-input v-model="editForm.code" disabled />
+        </el-form-item>
+        <el-form-item label="Tên sản phẩm">
+          <el-input v-model="editForm.name" />
+        </el-form-item>
+        <el-form-item label="Đơn vị">
+          <el-input v-model="editForm.unit" />
+        </el-form-item>
+        <el-form-item label="Ảnh (URL)">
+          <el-input v-model="editForm.imageUrl" placeholder="https://..." />
+        </el-form-item>
+        <el-form-item label="Vị trí kho">
+          <el-select v-model="editForm.location">
+            <el-option
+              v-for="loc in uniqueLocations"
+              :key="loc"
+              :label="loc"
+              :value="loc"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Tồn kho hiện tại">
+          <el-input-number v-model="editForm.stock" :min="0" />
+        </el-form-item>
+        <el-form-item label="Ghi chú">
+          <el-input
+            v-model="editForm.note"
+            placeholder="VD: chỉnh sửa thủ công"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">Huỷ</el-button>
+        <el-button type="primary" @click="submitEdit">Lưu</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- DIALOG: LỊCH SỬ -->
+    <el-dialog
+      v-model="historyVisible"
+      :title="`Lịch sử · ${historyItem?.name || ''} (${
+        historyItem?.code || ''
+      })`"
+      width="720"
+    >
+      <el-table :data="historyRows" style="width: 100%">
+        <el-table-column prop="time" label="Thời gian" width="180" />
+        <el-table-column prop="typeText" label="Loại" width="150" />
+        <el-table-column prop="detail" label="Chi tiết" />
+        <el-table-column prop="note" label="Ghi chú" width="200" />
+      </el-table>
+      <template #footer>
+        <el-button @click="historyVisible = false">Đóng</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
 import {
   Search,
   Plus,
   Edit,
   View,
-  Switch,
-  ArrowDown,
+  Switch as SwitchIcon,
   Picture,
 } from "@element-plus/icons-vue";
+
+// --- Responsive ---
 const isMobile = ref(false);
 const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768;
@@ -156,9 +366,21 @@ onBeforeUnmount(() => {
   window.removeEventListener("resize", checkScreenSize);
 });
 
+// --- State ---
+const isLoading = ref(false);
 const search = ref("");
+const locationFilter = ref("");
+const statusFilter = ref("");
 const currentPage = ref(1);
 const pageSize = 10;
+
+const statusOptions = [
+  { value: "success", label: "Còn hàng" },
+  { value: "warning", label: "Sắp hết" },
+  { value: "danger", label: "Hết hàng" },
+];
+
+// --- Data (mock) ---
 const inventories = ref([
   {
     code: "SP001",
@@ -167,6 +389,7 @@ const inventories = ref([
     stock: 120,
     location: "Kho chính",
     imageUrl: "https://i.imgur.com/8mB3H6f.png",
+    history: [],
   },
   {
     code: "SP004",
@@ -175,6 +398,7 @@ const inventories = ref([
     stock: 15,
     location: "Kho 1",
     imageUrl: "https://i.imgur.com/GCRzZ3c.png",
+    history: [],
   },
   {
     code: "SP006",
@@ -183,30 +407,240 @@ const inventories = ref([
     stock: 0,
     location: "Kho 2",
     imageUrl: "https://i.imgur.com/7g2jBGY.png",
+    history: [],
   },
 ]);
-const filteredInventories = computed(() => {
-  if (!search.value) return inventories.value;
-  return inventories.value.filter(
-    (item) =>
-      item.name.toLowerCase().includes(search.value.toLowerCase()) ||
-      item.code.toLowerCase().includes(search.value.toLowerCase())
-  );
-});
-const pagedInventories = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return filteredInventories.value.slice(start, start + pageSize);
-});
+
+// --- Utils ---
+const now = () => new Date().toLocaleString("vi-VN");
+const selectedByCode = (code) => inventories.value.find((i) => i.code === code);
 const getStockStatus = (stock) => {
   if (stock === 0) return { type: "danger", text: "Hết hàng" };
   if (stock <= 20) return { type: "warning", text: "Sắp hết" };
   return { type: "success", text: "Còn hàng" };
 };
-const receiveStock = () => {};
+const uniqueLocations = computed(() =>
+  Array.from(new Set(inventories.value.map((i) => i.location))).sort()
+);
+
+// --- Filters & paging ---
+const filteredInventories = computed(() => {
+  let arr = inventories.value;
+  const q = search.value.trim().toLowerCase();
+  if (q)
+    arr = arr.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q)
+    );
+  if (locationFilter.value)
+    arr = arr.filter((i) => i.location === locationFilter.value);
+  if (statusFilter.value)
+    arr = arr.filter(
+      (i) => getStockStatus(i.stock).type === statusFilter.value
+    );
+  return arr;
+});
+
+const pagedInventories = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredInventories.value.slice(start, start + pageSize);
+});
+
+// reset page khi đổi filter
+watch([search, locationFilter, statusFilter], () => {
+  currentPage.value = 1;
+});
+
+// --- Receive (Nhập kho) ---
+const receiveVisible = ref(false);
+const receiveForm = ref({ code: "", quantity: 1, note: "" });
+const openReceiveDialog = () => {
+  receiveForm.value = {
+    code: inventories.value[0]?.code || "",
+    quantity: 1,
+    note: "",
+  };
+  receiveVisible.value = true;
+};
+
+const addHistory = (item, entry) => {
+  item.history.unshift({ time: now(), ...entry });
+};
+
+const confirmReceive = async () => {
+  const item = selectedByCode(receiveForm.value.code);
+  if (!item) {
+    ElMessage.error("Chưa chọn sản phẩm");
+    return;
+  }
+  if (receiveForm.value.quantity <= 0) {
+    ElMessage.error("Số lượng không hợp lệ");
+    return;
+  }
+  isLoading.value = true;
+  setTimeout(() => {
+    item.stock += Number(receiveForm.value.quantity);
+    addHistory(item, {
+      type: "receive",
+      typeText: "Nhập kho",
+      detail: `+${receiveForm.value.quantity} ${item.unit}`,
+      note: receiveForm.value.note || "",
+    });
+    ElNotification({
+      title: "Đã nhập kho",
+      message: `${item.name} +${receiveForm.value.quantity} ${item.unit}`,
+      type: "success",
+    });
+    isLoading.value = false;
+    receiveVisible.value = false;
+  }, 400);
+};
+
+// --- Transfer (Chuyển kho) ---
+const transferVisible = ref(false);
+const transferForm = ref({ code: "", to: "", note: "" });
+const openTransferDialog = () => {
+  transferForm.value = {
+    code: inventories.value[0]?.code || "",
+    to: uniqueLocations.value[0] || "",
+    note: "",
+  };
+  transferVisible.value = true;
+};
+
+const confirmTransfer = async () => {
+  const item = selectedByCode(transferForm.value.code);
+  if (!item) {
+    ElMessage.error("Chưa chọn sản phẩm");
+    return;
+  }
+  if (!transferForm.value.to) {
+    ElMessage.error("Chưa chọn kho đích");
+    return;
+  }
+  if (transferForm.value.to === item.location) {
+    ElMessage.warning("Kho đích trùng kho hiện tại");
+    return;
+  }
+  await ElMessageBox.confirm(
+    `Chuyển "${item.name}" từ ${item.location} → ${transferForm.value.to}?`,
+    "Xác nhận",
+    { type: "warning" }
+  ).catch(() => null);
+  isLoading.value = true;
+  setTimeout(() => {
+    const from = item.location;
+    item.location = transferForm.value.to;
+    addHistory(item, {
+      type: "transfer",
+      typeText: "Chuyển kho",
+      detail: `${from} → ${item.location}`,
+      note: transferForm.value.note || "",
+    });
+    ElNotification({
+      title: "Đã chuyển kho",
+      message: `${item.name}: ${from} → ${item.location}`,
+      type: "success",
+    });
+    isLoading.value = false;
+    transferVisible.value = false;
+  }, 400);
+};
+
+// --- Edit (Sửa) ---
+const editVisible = ref(false);
+const editFormRef = ref(null);
+const editForm = ref({
+  code: "",
+  name: "",
+  unit: "",
+  imageUrl: "",
+  location: "",
+  stock: 0,
+  note: "",
+});
+
+const openEditDialog = (row) => {
+  editForm.value = {
+    code: row.code,
+    name: row.name,
+    unit: row.unit,
+    imageUrl: row.imageUrl,
+    location: row.location,
+    stock: row.stock,
+    note: "",
+  };
+  editVisible.value = true;
+};
+
+const submitEdit = async () => {
+  const item = selectedByCode(editForm.value.code);
+  if (!item) return;
+  const oldStock = item.stock;
+  isLoading.value = true;
+  setTimeout(() => {
+    item.name = editForm.value.name;
+    item.unit = editForm.value.unit;
+    item.imageUrl = editForm.value.imageUrl;
+    item.location = editForm.value.location;
+    item.stock = Number(editForm.value.stock);
+    const delta = item.stock - oldStock;
+    const deltaStr =
+      delta === 0 ? "" : delta > 0 ? `(+${delta})` : `(${delta})`;
+    addHistory(item, {
+      type: "edit",
+      typeText: "Chỉnh sửa",
+      detail: `Tồn kho: ${oldStock} → ${item.stock} ${deltaStr}; Vị trí: ${item.location}`,
+      note: editForm.value.note || "",
+    });
+    ElMessage.success("Đã lưu thay đổi");
+    isLoading.value = false;
+    editVisible.value = false;
+  }, 400);
+};
+
+// --- History (Lịch sử) ---
+const historyVisible = ref(false);
+const historyItem = ref(null);
+const openHistoryDialog = (row) => {
+  historyItem.value = row;
+  historyVisible.value = true;
+};
+const historyRows = computed(() => historyItem.value?.history || []);
 </script>
 
 <style scoped>
-/* @import './responsive-stylecss'; */
+/* layout helpers */
+.action-buttons-group {
+  display: flex;
+  gap: 8px;
+}
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+.search-input-wrapper {
+  flex: 1;
+  min-width: 260px;
+}
+.advanced-filters {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  gap: 12px;
+}
+.adv-select {
+  width: 200px;
+}
+
+/* product visuals */
 .product-info {
   display: flex;
   align-items: center;
@@ -218,6 +652,16 @@ const receiveStock = () => {};
   border-radius: 4px;
   flex-shrink: 0;
   border: 1px solid #f3f4f6;
+}
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 24px;
 }
 .product-name {
   font-weight: 600;
@@ -232,7 +676,11 @@ const receiveStock = () => {};
   font-size: 0.9em;
   font-weight: 400;
 }
-/* ----- GLOBAL LAYOUT & TYPOGRAPHY ----- */
+.stock-strong {
+  font-weight: 600;
+}
+
+/* page shell */
 .page-container {
   padding: 16px;
   background-color: #f9fafb;
@@ -252,21 +700,11 @@ const receiveStock = () => {};
   font-weight: 700;
   color: #111827;
 }
-
-/* ----- CONTAINERS & BARS ----- */
 .table-container {
-  background-color: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
-}
-.filters-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
 }
 .pagination-container {
   display: flex;
@@ -279,7 +717,7 @@ const receiveStock = () => {};
   justify-content: center;
 }
 
-/* ----- MOBILE CARD STYLES ----- */
+/* mobile cards */
 .mobile-card-list {
   padding: 16px;
 }
@@ -321,13 +759,29 @@ const receiveStock = () => {};
 }
 .card-footer {
   padding: 8px 16px;
-  background-color: #f9fafb;
+  background: #f9fafb;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-/* ----- ELEMENT PLUS CUSTOMIZATION ----- */
+/* dialog forms */
+.dialog-form.two-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px 16px;
+}
+@media (max-width: 768px) {
+  .advanced-filters {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+  }
+  .dialog-form.two-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* element-plus tweaks */
 .page-container :deep(.el-button) {
   border-radius: 6px;
   font-weight: 500;
@@ -337,45 +791,16 @@ const receiveStock = () => {};
   box-shadow: none !important;
   border: 1px solid #d1d5db;
 }
-
-/* ----- DESKTOP OVERRIDES ----- */
-@media (min-width: 768px) {
-  .page-container {
-    padding: 24px 32px;
-  }
-  .page-title {
-    font-size: 1.75rem;
-  }
-  .filters-bar {
-    padding: 16px 20px;
-  }
-  .pagination-container {
-    justify-content: flex-end;
-  }
-  .page-container :deep(.el-button--primary) {
-    background-color: #2563eb;
-    border-color: #2563eb;
-  }
-  .page-container :deep(.el-input) {
-    max-width: 400px;
-  }
-  .page-container :deep(.el-table th) {
-    background-color: #f9fafb !important;
-    color: #6b7280;
-    font-weight: 600;
-  }
-  .page-container :deep(.el-table td.el-table__cell) {
-    border-bottom: 1px solid #f3f4f6;
-    padding: 14px 0;
-  }
-  .page-container :deep(.el-table .el-table__row:hover > td) {
-    background-color: #f9fafb !important;
-  }
-  .page-container
-    :deep(
-      .el-pagination.is-background .el-pager li:not(.is-disabled).is-active
-    ) {
-    background-color: #2563eb;
-  }
+.page-container :deep(.el-table th) {
+  background: #f9fafb !important;
+  color: #6b7280;
+  font-weight: 600;
+}
+.page-container :deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid #f3f4f6;
+  padding: 14px 0;
+}
+.page-container :deep(.el-table .el-table__row:hover > td) {
+  background: #f9fafb !important;
 }
 </style>
